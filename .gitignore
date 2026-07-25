@@ -1,0 +1,23 @@
+node_modules/
+dist/
+.cache/
+*.tsbuildinfo
+*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Workbuddy / Reasonix (dev tooling, not part of source)
+.reasonix/
+.workbuddy/

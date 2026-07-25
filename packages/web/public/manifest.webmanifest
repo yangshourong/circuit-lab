@@ -1,0 +1,12 @@
+{
+  "name": "智能电路实验室",
+  "short_name": "电路实验室",
+  "description": "中学物理虚拟电路实验平台",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#f1f5f9",
+  "theme_color": "#1e3a8a",
+  "lang": "zh-CN",
+  "icons": []
+}

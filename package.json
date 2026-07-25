@@ -1,0 +1,23 @@
+{
+  "name": "circuit-lab",
+  "version": "0.1.0",
+  "private": true,
+  "description": "智能电路实验室 — 面向中学物理实验教学的纯 TypeScript 电路仿真引擎 + Web 编辑器",
+  "scripts": {
+    "dev": "cd packages/web && npx vite",
+    "build": "cd packages/core && npx tsc -p tsconfig.json && cd ../web && npx vite build",
+    "build:core": "cd packages/core && npx tsc -p tsconfig.json",
+    "build:web": "cd packages/web && npx vite build",
+    "typecheck:core": "cd packages/core && npx tsc -p tsconfig.json --noEmit",
+    "typecheck:web": "cd packages/web && npx tsc -p tsconfig.json --noEmit",
+    "test": "cd packages/core && npx tsx tests/benchmarks.test.ts",
+    "bench": "cd packages/core && npx tsx tests/benchmarks.test.ts"
+  },
+  "workspaces": [
+    "packages/core",
+    "packages/web"
+  ],
+  "engines": {
+    "node": ">=20"
+  }
+}

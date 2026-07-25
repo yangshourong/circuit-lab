@@ -1,0 +1,2 @@
+[permissions]
+allow = ["Edit", "explore", "Bash(cd \"G:/我的项目/workbuddy工作空间/中学物理实验/packages/web\" && npm install 2>&1)"]
