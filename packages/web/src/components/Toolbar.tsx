@@ -1,10 +1,12 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import type React from 'react';
 import { useStore } from '../store';
 import { serializeExperiment, deserializeExperiment } from '@circuit/core';
 import { exportSvgToPng, downloadText, readFileAsText } from '../fileio';
+import { SponsorModal } from './SponsorModal';
 
 export function Toolbar() {
+  const [showSponsor, setShowSponsor] = useState(false);
   const view = useStore((s) => s.view);
   const largeScreen = useStore((s) => s.largeScreen);
   const canUndo = useStore((s) => s.past.length > 0);
@@ -164,6 +166,12 @@ export function Toolbar() {
         </button>
         <input ref={fileRef} type="file" accept=".json,application/json" hidden onChange={onFile} />
       </div>
+      <div className="tb-group">
+        <button type="button" className="btn sponsor-btn" onClick={() => setShowSponsor(true)} title="赞助支持项目">
+          ❤️ 赞助
+        </button>
+      </div>
+      {showSponsor && <SponsorModal onClose={() => setShowSponsor(false)} />}
     </div>
   );
 }
