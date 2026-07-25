@@ -12,3 +12,5 @@ export type {
 } from '@circuit/core';
 
 export type ViewMode = 'physical' | 'schematic';
+export type Breakpoint = 'mobile' | 'tablet' | 'desktop';
+export type Tool = 'select' | 'wire' | 'place';
