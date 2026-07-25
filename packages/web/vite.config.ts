@@ -19,10 +19,5 @@ export default defineConfig({
   build: {
     target: 'es2020',
     outDir: 'dist',
-    // Disabled so `vite build` does not call fs.rmSync on the outDir.
-    // In the WorkBuddy sandbox a safe-delete shim intercepts rmSync and
-    // aborts the build when emptying an existing dist. Stale hashed assets
-    // are harmless (index.html references the freshly emitted files).
-    emptyOutDir: false,
   },
 });
