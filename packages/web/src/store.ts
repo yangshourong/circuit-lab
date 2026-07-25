@@ -164,7 +164,7 @@ export const useStore = create<StoreState>((set, get) => ({
   wireStart: null,
   view: { mode: 'physical', zoom: 1, panX: 220, panY: 260 },
   viewSize: { w: 800, h: 600 },
-  largeScreen: false,
+  largeScreen: true,
   breakpoint: 'desktop',
   placeType: null,
   showReadings: false,

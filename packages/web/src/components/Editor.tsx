@@ -59,6 +59,9 @@ export function Editor() {
     startZoom: number; startPanX: number; startPanY: number;
   } | null>(null);
 
+  /** When true, a two-finger pinch is in progress; skip pointer gesture handling. */
+  const pinchingRef = useRef(false);
+
   const isMobile = breakpoint === 'mobile' || breakpoint === 'tablet';
 
   // ── Auto-generated schematic layout (recomputed on graph change) ──
@@ -192,7 +195,10 @@ export function Editor() {
     if (!el) return;
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length < 2) return;
-      e.preventDefault(); // Suppress pointer events during pinch
+      e.preventDefault();
+      // Mark pinch active so pointer handlers skip
+      pinchingRef.current = true;
+      gesture.current = { type: 'none' };
       const t1 = e.touches[0];
       const t2 = e.touches[1];
       const dx = t2.clientX - t1.clientX;
@@ -232,7 +238,10 @@ export function Editor() {
       st.setView({ zoom, panX: sx - wx * zoom, panY: sy - wy * zoom });
     };
     const onTouchEnd = (e: TouchEvent) => {
-      if (e.touches.length < 2) touchPinch.current = null;
+      if (e.touches.length < 2) {
+        pinchingRef.current = false;
+        touchPinch.current = null;
+      }
     };
     el.addEventListener('touchstart', onTouchStart, { passive: false });
     el.addEventListener('touchmove', onTouchMove, { passive: false });
@@ -297,6 +306,7 @@ export function Editor() {
   }, []);
 
   const onPointerDown = (e: React.PointerEvent) => {
+    if (pinchingRef.current) return;
     const st = useStore.getState();
     const target = e.target as Element;
     const world = toWorld(e.clientX, e.clientY);
