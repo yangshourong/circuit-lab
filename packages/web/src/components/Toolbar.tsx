@@ -99,7 +99,7 @@ export function Toolbar() {
           🗑 删除{selectedCount > 0 ? ` (${selectedCount})` : ''}
         </button>
       </div>
-      <div className="tb-group">
+      <div className="tb-group nav-group">
         <button type="button" className="btn" disabled={!canUndo} onClick={undo} title="撤销 (Ctrl+Z)">
           ↶ 撤销
         </button>
@@ -107,7 +107,7 @@ export function Toolbar() {
           ↷ 重做
         </button>
       </div>
-      <div className="tb-group">
+      <div className="tb-group nav-group">
         <button type="button" className="btn" onClick={() => zoomBy(1 / 1.2)} title="缩小">
           −
         </button>
@@ -119,7 +119,7 @@ export function Toolbar() {
           复位
         </button>
       </div>
-      <div className="tb-group seg">
+      <div className="tb-group seg nav-group">
         <button
           type="button"
           className={view.mode === 'physical' ? 'seg-btn active' : 'seg-btn'}
@@ -136,7 +136,7 @@ export function Toolbar() {
           简化电路图
         </button>
       </div>
-      <div className="tb-group">
+      <div className="tb-group nav-group">
         <button
           type="button"
           className={largeScreen ? 'btn active' : 'btn'}
@@ -154,7 +154,7 @@ export function Toolbar() {
           {showReadings ? '隐藏读数' : '显示读数'}
         </button>
       </div>
-      <div className="tb-group">
+      <div className="tb-group nav-group">
         <button type="button" className="btn" onClick={onSave}>
           保存
         </button>
@@ -166,7 +166,7 @@ export function Toolbar() {
         </button>
         <input ref={fileRef} type="file" accept=".json,application/json" hidden onChange={onFile} />
       </div>
-      <div className="tb-group">
+      <div className="tb-group nav-group">
         <button type="button" className="btn sponsor-btn" onClick={() => setShowSponsor(true)} title="赞助支持项目">
           ❤️ 赞助
         </button>
