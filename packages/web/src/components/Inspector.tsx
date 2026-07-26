@@ -94,16 +94,9 @@ export function Inspector() {
                 step={schema.step ?? 1}
                 value={Number(comp.params[schema.key] ?? schema.default)}
                 onChange={(e) => onParam(schema, Number(e.target.value))}
+                className="slider"
               />
-              <input
-                type="number"
-                className="num"
-                min={schema.min}
-                max={schema.max}
-                step={schema.step}
-                value={Number(comp.params[schema.key] ?? schema.default)}
-                onChange={(e) => onParam(schema, Number(e.target.value))}
-              />
+              <span className="num">{fmt(Number(comp.params[schema.key] ?? schema.default))}</span>
             </div>
           )}
           {schema.type === 'select' && (
@@ -151,14 +144,18 @@ export function Inspector() {
 
       <div className="field">
         <label>旋转 (°)</label>
-        <input
-          type="number"
-          step={15}
-          min={0}
-          max={360}
-          value={comp.rotation ?? 0}
-          onChange={(e) => setRotation(id, Number(e.target.value))}
-        />
+        <div className="row">
+          <input
+            type="range"
+            min={0}
+            max={360}
+            step={15}
+            value={comp.rotation ?? 0}
+            onChange={(e) => setRotation(id, Number(e.target.value))}
+            className="slider"
+          />
+          <span className="num">{comp.rotation ?? 0}°</span>
+        </div>
       </div>
 
       {def.pins.length >= 2 && (

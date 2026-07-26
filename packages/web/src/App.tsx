@@ -23,6 +23,7 @@ export default function App() {
   const redo = useStore((s) => s.redo);
   const removeSelected = useStore((s) => s.removeSelected);
   const selectedIds = useStore((s) => s.selectedIds);
+  const gesturing = useStore((s) => s.gesturing);
 
   const isMobile = breakpoint === 'mobile' || breakpoint === 'tablet';
 
@@ -164,7 +165,7 @@ export default function App() {
         )}
 
         {/* ── Mobile: bottom sheet Inspector (auto-show on selection) ── */}
-        {isMobile && selectedIds.length > 0 && (
+        {isMobile && selectedIds.length > 0 && !gesturing && (
           <BottomSheet open onClose={() => useStore.getState().clearSelection()}>
             <Inspector />
           </BottomSheet>

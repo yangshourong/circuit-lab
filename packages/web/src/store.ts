@@ -58,6 +58,7 @@ interface StoreState {
   viewSize: { w: number; h: number };
   breakpoint: Breakpoint;
   placeType: string | null;
+  gesturing: boolean;
   largeScreen: boolean;
   showReadings: boolean;
   solver: SolverResult | null;
@@ -172,6 +173,7 @@ export const useStore = create<StoreState>((set, get) => ({
     return 'desktop' as const;
   })(),
   placeType: null,
+  gesturing: false,
   showReadings: false,
   solver: null,
   solverError: null,
@@ -314,7 +316,7 @@ export const useStore = create<StoreState>((set, get) => ({
     }),
   setWireStart: (pin) => set({ wireStart: pin }),
 
-  beginGesture: () => set((s) => ({ _base: s.graph })),
+  beginGesture: () => set((s) => ({ _base: s.graph, gesturing: true })),
   setComponentPositionsLive: (positions) =>
     set((s) => ({
       graph: {
@@ -326,14 +328,15 @@ export const useStore = create<StoreState>((set, get) => ({
     })),
   endGesture: () =>
     set((s) => {
-      if (!s._base || s._base === s.graph) return { _base: null };
+      if (!s._base || s._base === s.graph) return { _base: null, gesturing: false };
       return {
         past: [...s.past, s._base].slice(-HISTORY_LIMIT),
         future: [],
         _base: null,
+        gesturing: false,
       };
     }),
-  cancelGesture: () => set((s) => (s._base ? { graph: s._base, _base: null } : { _base: null })),
+  cancelGesture: () => set((s) => (s._base ? { graph: s._base, _base: null, gesturing: false } : { _base: null, gesturing: false })),
 
   setView: (patch) => set((s) => ({ view: { ...s.view, ...patch } })),
   setViewSize: (w, h) => set({ viewSize: { w, h } }),

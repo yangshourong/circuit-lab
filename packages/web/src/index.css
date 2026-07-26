@@ -5,7 +5,9 @@ html,
 body,
 #root {
   height: 100%;
+  height: 100dvh;
   margin: 0;
+  overflow: hidden;
 }
 body {
   font-family: system-ui, -apple-system, 'Microsoft YaHei', 'PingFang SC', sans-serif;
@@ -18,6 +20,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
 }
 
 /* ---------- Toolbar ---------- */
@@ -313,7 +316,24 @@ body {
 .field .row input[type='range'] {
   flex: 1;
 }
+.field .row input.slider {
+  flex: 1;
+  min-height: 32px;
+  cursor: pointer;
+}
 .field .num {
+  min-width: 60px;
+  text-align: right;
+  font-family: ui-monospace, monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  background: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.field .row input[type='number'].num {
   width: 74px;
 }
 .checkbox {
@@ -709,5 +729,26 @@ body {
     font-size: 11px;
     bottom: 4px;
     left: 6px;
+  }
+
+  /* Larger slider thumb for touch */
+  input[type='range'] {
+    height: 6px;
+  }
+  input[type='range']::-webkit-slider-thumb {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #2563eb;
+    cursor: pointer;
+    -webkit-appearance: none;
+  }
+  input[type='range']::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #2563eb;
+    border: none;
+    cursor: pointer;
   }
 }

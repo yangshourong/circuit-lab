@@ -483,7 +483,10 @@ export function Editor() {
       // Otherwise it was a click (no target pin): keep wireStart armed for a
       // second click; the trail keeps recording so the cable follows the mouse.
     } else if (g.type === 'move') {
-      if (g.moved) st.endGesture();
+      if (g.moved) {
+        st.endGesture();
+        if (isMobile) st.clearSelection();
+      }
       else st.cancelGesture();
     } else if (g.type === 'marquee') {
       const m = marquee;
