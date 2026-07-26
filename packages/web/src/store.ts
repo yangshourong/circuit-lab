@@ -165,7 +165,12 @@ export const useStore = create<StoreState>((set, get) => ({
   view: { mode: 'physical', zoom: 1, panX: 220, panY: 260 },
   viewSize: { w: 800, h: 600 },
   largeScreen: true,
-  breakpoint: 'desktop',
+  breakpoint: (() => {
+    const w = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    if (w < 640) return 'mobile' as const;
+    if (w < 1024) return 'tablet' as const;
+    return 'desktop' as const;
+  })(),
   placeType: null,
   showReadings: false,
   solver: null,
@@ -304,7 +309,7 @@ export const useStore = create<StoreState>((set, get) => ({
   setTool: (tool) =>
     set(() => {
       if (tool === 'wire') return { tool, wireStart: null, selectedIds: [], placeType: null };
-      if (tool === 'place') return { tool, placeType: null, wireStart: null };
+      if (tool === 'place') return { tool, wireStart: null };
       return { tool, wireStart: null, placeType: null };
     }),
   setWireStart: (pin) => set({ wireStart: pin }),

@@ -59,6 +59,14 @@ export default function App() {
     }
   }, [isMobile]);
 
+  // Auto-close left drawer when entering place mode
+  const tool = useStore((s) => s.tool);
+  useEffect(() => {
+    if (tool === 'place') {
+      setLeftOpen(false);
+    }
+  }, [tool]);
+
   // ---- auto-solve on graph change (debounced) ----
   const solveTimer = useRef<ReturnType<typeof setTimeout>>();
   const doSolve = useCallback(() => {
