@@ -121,7 +121,7 @@ export default function App() {
         {/* ── Mobile left drawer ── */}
         {isMobile && leftOpen && (
           <>
-            <div className="mobile-panel-overlay" onClick={() => setLeftOpen(false)} />
+            <div className="mobile-panel-overlay" onPointerDown={() => setLeftOpen(false)} />
             <div className="mobile-panel">
               <div className="mobile-panel-header">
                 <span>元器件</span>
@@ -152,7 +152,7 @@ export default function App() {
         {/* ── Mobile right drawer ── */}
         {isMobile && rightOpen && (
           <>
-            <div className="mobile-panel-overlay" onClick={() => setRightOpen(false)} />
+            <div className="mobile-panel-overlay" onPointerDown={() => setRightOpen(false)} />
             <div className="mobile-panel mobile-panel-right">
               <div className="mobile-panel-header">
                 <span>属性</span>

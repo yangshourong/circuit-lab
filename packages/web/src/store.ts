@@ -360,7 +360,7 @@ export const useStore = create<StoreState>((set, get) => ({
     set((s) => ({ view: { ...s.view, zoom: 1, panX: 120, panY: s.viewSize.h / 2 } })),
   setBreakpoint: (bp) => set(() => ({ breakpoint: bp, largeScreen: bp === 'desktop' })),
   setPlaceType: (type) => set({ placeType: type }),
-  toggleLargeScreen: () => set((s) => ({ largeScreen: !s.largeScreen, breakpoint: s.largeScreen ? 'tablet' : 'desktop' })),
+  toggleLargeScreen: () => set((s) => ({ largeScreen: !s.largeScreen })),
   toggleReadings: () => set((s) => ({ showReadings: !s.showReadings })),
 
   setSolver: (solver, solverError) => set({ solver, solverError }),
