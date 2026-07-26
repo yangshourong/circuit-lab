@@ -37,6 +37,9 @@ export function Editor() {
   const solver = useStore((s) => s.solver);
   const tool = useStore((s) => s.tool);
   const wireStart = useStore((s) => s.wireStart);
+  const breakpoint = useStore((s) => s.breakpoint);
+  const placeType = useStore((s) => s.placeType);
+  const setPlaceType = useStore((s) => s.setPlaceType);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const gesture = useRef<Gesture>({ type: 'none' });
@@ -47,6 +50,19 @@ export function Editor() {
   /** Raw pointer trail (world coords) accumulated while a wire is being routed. */
   const trailRef = useRef<Pt[]>([]);
   const [marquee, setMarquee] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
+
+  /** Touch pinch state for mobile zoom */
+  const touchPinch = useRef<{
+    id1: number; id2: number;
+    startDist: number;
+    center: { sx: number; sy: number; wx: number; wy: number };
+    startZoom: number; startPanX: number; startPanY: number;
+  } | null>(null);
+
+  /** When true, a two-finger pinch is in progress; skip pointer gesture handling. */
+  const pinchingRef = useRef(false);
+
+  const isMobile = breakpoint === 'mobile' || breakpoint === 'tablet';
 
   // ── Auto-generated schematic layout (recomputed on graph change) ──
   const schemLayout: SchematicLayout | null = useMemo(() => {
@@ -173,6 +189,70 @@ export function Editor() {
     return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
+  // --- pinch-to-zoom (mobile touch) ---
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length < 2) return;
+      e.preventDefault();
+      // Mark pinch active so pointer handlers skip
+      pinchingRef.current = true;
+      gesture.current = { type: 'none' };
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dx = t2.clientX - t1.clientX;
+      const dy = t2.clientY - t1.clientY;
+      const rect = el.getBoundingClientRect();
+      const cx = (t1.clientX + t2.clientX) / 2 - rect.left;
+      const cy = (t1.clientY + t2.clientY) / 2 - rect.top;
+      const st = useStore.getState();
+      const v = st.view;
+      touchPinch.current = {
+        id1: t1.identifier, id2: t2.identifier,
+        startDist: Math.hypot(dx, dy),
+        center: { sx: cx, sy: cy, wx: (cx - v.panX) / v.zoom, wy: (cy - v.panY) / v.zoom },
+        startZoom: v.zoom, startPanX: v.panX, startPanY: v.panY,
+      };
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      const p = touchPinch.current;
+      if (!p) return;
+      e.preventDefault();
+      if (e.touches.length < 2) return;
+      // Find matching touches
+      let t1: Touch | null = null, t2: Touch | null = null;
+      for (let i = 0; i < e.touches.length; i++) {
+        const t = e.touches[i];
+        if (t.identifier === p.id1) t1 = t;
+        if (t.identifier === p.id2) t2 = t;
+      }
+      if (!t1 || !t2) return;
+      const dx = t2.clientX - t1.clientX;
+      const dy = t2.clientY - t1.clientY;
+      const dist = Math.hypot(dx, dy);
+      const factor = dist / p.startDist;
+      const zoom = Math.min(4, Math.max(0.2, p.startZoom * factor));
+      const { sx, sy, wx, wy } = p.center;
+      const st = useStore.getState();
+      st.setView({ zoom, panX: sx - wx * zoom, panY: sy - wy * zoom });
+    };
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) {
+        pinchingRef.current = false;
+        touchPinch.current = null;
+      }
+    };
+    el.addEventListener('touchstart', onTouchStart, { passive: false });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd, { passive: false });
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+  }, []);
+
   // --- space-to-pan tracking ---
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -226,6 +306,7 @@ export function Editor() {
   }, []);
 
   const onPointerDown = (e: React.PointerEvent) => {
+    if (pinchingRef.current) return;
     const st = useStore.getState();
     const target = e.target as Element;
     const world = toWorld(e.clientX, e.clientY);
@@ -265,6 +346,20 @@ export function Editor() {
       return;
     }
     if (e.button !== 0) return;
+
+    // ================= PLACE TOOL (mobile click-to-place) =================
+    if (st.tool === 'place') {
+      const type = st.placeType;
+      if (type) {
+        st.addComponent(type, world.x, world.y);
+        // Place once then return to select
+        st.setTool('select');
+        st.setPlaceType(null);
+      } else {
+        st.setTool('select');
+      }
+      return;
+    }
 
     // ================= WIRE TOOL =================
     if (st.tool === 'wire') {
@@ -332,10 +427,15 @@ export function Editor() {
       return;
     }
 
-    // empty canvas -> marquee (or deselect)
+    // empty canvas -> marquee (or pan on mobile)
     if (!e.shiftKey) st.clearSelection();
-    gesture.current = { type: 'marquee', startWorld: world };
-    setMarquee({ x1: world.x, y1: world.y, x2: world.x, y2: world.y });
+    if (isMobile && st.tool === 'select') {
+      // Single-finger pan on mobile (no space key needed)
+      gesture.current = { type: 'pan', startX: e.clientX, startY: e.clientY, panX: st.view.panX, panY: st.view.panY };
+    } else {
+      gesture.current = { type: 'marquee', startWorld: world };
+      setMarquee({ x1: world.x, y1: world.y, x2: world.x, y2: world.y });
+    }
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
   };
 
@@ -383,7 +483,10 @@ export function Editor() {
       // Otherwise it was a click (no target pin): keep wireStart armed for a
       // second click; the trail keeps recording so the cable follows the mouse.
     } else if (g.type === 'move') {
-      if (g.moved) st.endGesture();
+      if (g.moved) {
+        st.endGesture();
+        if (isMobile) st.clearSelection();
+      }
       else st.cancelGesture();
     } else if (g.type === 'marquee') {
       const m = marquee;
@@ -428,7 +531,7 @@ export function Editor() {
 
       onDragOver={onDragOver}
       onDrop={onDrop}
-      style={{ cursor: spaceDown ? 'grab' : tool === 'wire' ? 'crosshair' : 'default' }}
+      style={{ cursor: placeType ? 'copy' : spaceDown ? 'grab' : tool === 'wire' ? 'crosshair' : 'default' }}
     >
       <defs>
         <pattern id="grid" width={GRID} height={GRID} patternUnits="userSpaceOnUse">

@@ -8,7 +8,7 @@ import {
   type SolverResult,
   type FaultState,
 } from '@circuit/core';
-import type { ViewMode } from './types';
+import type { Breakpoint, Tool, ViewMode } from './types';
 
 export const GRID = 10;
 /** Snap a world coordinate to the grid. */
@@ -32,7 +32,6 @@ export interface ChartPoint {
   i: number;
 }
 
-export type Tool = 'select' | 'wire';
 
 export interface ViewState {
   mode: ViewMode;
@@ -57,6 +56,9 @@ interface StoreState {
   wireStart: PinRef | null;
   view: ViewState;
   viewSize: { w: number; h: number };
+  breakpoint: Breakpoint;
+  placeType: string | null;
+  gesturing: boolean;
   largeScreen: boolean;
   showReadings: boolean;
   solver: SolverResult | null;
@@ -101,6 +103,8 @@ interface StoreState {
   zoomBy: (factor: number) => void;
   panBy: (dx: number, dy: number) => void;
   resetView: () => void;
+  setBreakpoint: (bp: Breakpoint) => void;
+  setPlaceType: (type: string | null) => void;
   toggleLargeScreen: () => void;
   toggleReadings: () => void;
 
@@ -161,7 +165,15 @@ export const useStore = create<StoreState>((set, get) => ({
   wireStart: null,
   view: { mode: 'physical', zoom: 1, panX: 220, panY: 260 },
   viewSize: { w: 800, h: 600 },
-  largeScreen: false,
+  largeScreen: true,
+  breakpoint: (() => {
+    const w = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    if (w < 640) return 'mobile' as const;
+    if (w < 1024) return 'tablet' as const;
+    return 'desktop' as const;
+  })(),
+  placeType: null,
+  gesturing: false,
   showReadings: false,
   solver: null,
   solverError: null,
@@ -297,10 +309,14 @@ export const useStore = create<StoreState>((set, get) => ({
   clearSelection: () => set({ selectedIds: [] }),
 
   setTool: (tool) =>
-    set(() => (tool === 'wire' ? { tool, wireStart: null, selectedIds: [] } : { tool, wireStart: null })),
+    set(() => {
+      if (tool === 'wire') return { tool, wireStart: null, selectedIds: [], placeType: null };
+      if (tool === 'place') return { tool, wireStart: null };
+      return { tool, wireStart: null, placeType: null };
+    }),
   setWireStart: (pin) => set({ wireStart: pin }),
 
-  beginGesture: () => set((s) => ({ _base: s.graph })),
+  beginGesture: () => set((s) => ({ _base: s.graph, gesturing: true })),
   setComponentPositionsLive: (positions) =>
     set((s) => ({
       graph: {
@@ -312,14 +328,15 @@ export const useStore = create<StoreState>((set, get) => ({
     })),
   endGesture: () =>
     set((s) => {
-      if (!s._base || s._base === s.graph) return { _base: null };
+      if (!s._base || s._base === s.graph) return { _base: null, gesturing: false };
       return {
         past: [...s.past, s._base].slice(-HISTORY_LIMIT),
         future: [],
         _base: null,
+        gesturing: false,
       };
     }),
-  cancelGesture: () => set((s) => (s._base ? { graph: s._base, _base: null } : { _base: null })),
+  cancelGesture: () => set((s) => (s._base ? { graph: s._base, _base: null, gesturing: false } : { _base: null, gesturing: false })),
 
   setView: (patch) => set((s) => ({ view: { ...s.view, ...patch } })),
   setViewSize: (w, h) => set({ viewSize: { w, h } }),
@@ -341,6 +358,8 @@ export const useStore = create<StoreState>((set, get) => ({
     set((s) => ({ view: { ...s.view, panX: s.view.panX + dx, panY: s.view.panY + dy } })),
   resetView: () =>
     set((s) => ({ view: { ...s.view, zoom: 1, panX: 120, panY: s.viewSize.h / 2 } })),
+  setBreakpoint: (bp) => set(() => ({ breakpoint: bp, largeScreen: bp === 'desktop' })),
+  setPlaceType: (type) => set({ placeType: type }),
   toggleLargeScreen: () => set((s) => ({ largeScreen: !s.largeScreen })),
   toggleReadings: () => set((s) => ({ showReadings: !s.showReadings })),
 

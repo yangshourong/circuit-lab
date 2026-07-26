@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useStore } from './store';
 import { Editor } from './components/Editor';
 import { Inspector } from './components/Inspector';
@@ -6,17 +6,67 @@ import { Palette } from './components/Palette';
 import { Toolbar } from './components/Toolbar';
 import { Chart } from './components/Chart';
 import { Tasks } from './tasks/Tasks';
+import { BottomSheet } from './components/BottomSheet';
+import { MobileToolbar } from './components/MobileToolbar';
 import { solveCircuit } from '@circuit/core';
+import type { Breakpoint } from './types';
 
 export default function App() {
   const graph = useStore((s) => s.graph);
   const largeScreen = useStore((s) => s.largeScreen);
+  const breakpoint = useStore((s) => s.breakpoint);
   const solver = useStore((s) => s.solver);
   const solverError = useStore((s) => s.solverError);
   const setSolver = useStore((s) => s.setSolver);
+  const setBreakpoint = useStore((s) => s.setBreakpoint);
   const undo = useStore((s) => s.undo);
   const redo = useStore((s) => s.redo);
   const removeSelected = useStore((s) => s.removeSelected);
+  const selectedIds = useStore((s) => s.selectedIds);
+  const gesturing = useStore((s) => s.gesturing);
+
+  const isMobile = breakpoint === 'mobile' || breakpoint === 'tablet';
+
+  // Mobile panel visibility
+  const [leftOpen, setLeftOpen] = useState(false);
+  const [rightOpen, setRightOpen] = useState(false);
+
+  // ---- responsive breakpoint detection ----
+  const appRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = appRef.current;
+    if (!el) return;
+    const checkWidth = () => {
+      const w = el.clientWidth;
+      let bp: Breakpoint = 'desktop';
+      if (w < 640) bp = 'mobile';
+      else if (w < 1024) bp = 'tablet';
+      if (bp !== useStore.getState().breakpoint) {
+        setBreakpoint(bp);
+      }
+    };
+    // Initial check
+    checkWidth();
+    const ro = new ResizeObserver(checkWidth);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [setBreakpoint]);
+
+  // Close mobile drawers when going back to desktop
+  useEffect(() => {
+    if (!isMobile) {
+      setLeftOpen(false);
+      setRightOpen(false);
+    }
+  }, [isMobile]);
+
+  // Auto-close left drawer when entering place mode
+  const tool = useStore((s) => s.tool);
+  useEffect(() => {
+    if (tool === 'place') {
+      setLeftOpen(false);
+    }
+  }, [tool]);
 
   // ---- auto-solve on graph change (debounced) ----
   const solveTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -57,14 +107,31 @@ export default function App() {
   }, [undo, redo, removeSelected]);
 
   return (
-    <div className={`app${largeScreen ? ' large-screen' : ''}`}>
+    <div ref={appRef} className={`app${largeScreen ? ' large-screen' : ''}`}>
       <Toolbar />
       <div className="body">
-        {/* left sidebar: palette + tasks */}
-        <div className="left">
-          <Palette />
-          <Tasks />
-        </div>
+        {/* ── Desktop left sidebar ── */}
+        {!isMobile && (
+          <div className="left">
+            <Palette />
+            <Tasks />
+          </div>
+        )}
+
+        {/* ── Mobile left drawer ── */}
+        {isMobile && leftOpen && (
+          <>
+            <div className="mobile-panel-overlay" onPointerDown={() => setLeftOpen(false)} />
+            <div className="mobile-panel">
+              <div className="mobile-panel-header">
+                <span>元器件</span>
+                <button type="button" onClick={() => setLeftOpen(false)}>✕</button>
+              </div>
+              <Palette />
+              <Tasks />
+            </div>
+          </>
+        )}
 
         {/* center: editor canvas */}
         <div className="stage">
@@ -74,12 +141,44 @@ export default function App() {
           <ToolBadge />
         </div>
 
-        {/* right sidebar: inspector + chart */}
-        <div className="right">
-          <Inspector />
-          <Chart />
-        </div>
+        {/* ── Desktop right sidebar ── */}
+        {!isMobile && (
+          <div className="right">
+            <Inspector />
+            <Chart />
+          </div>
+        )}
+
+        {/* ── Mobile right drawer ── */}
+        {isMobile && rightOpen && (
+          <>
+            <div className="mobile-panel-overlay" onPointerDown={() => setRightOpen(false)} />
+            <div className="mobile-panel mobile-panel-right">
+              <div className="mobile-panel-header">
+                <span>属性</span>
+                <button type="button" onClick={() => setRightOpen(false)}>✕</button>
+              </div>
+              <Inspector />
+              <Chart />
+            </div>
+          </>
+        )}
+
+        {/* ── Mobile: bottom sheet Inspector (auto-show on selection) ── */}
+        {isMobile && selectedIds.length > 0 && !gesturing && (
+          <BottomSheet open onClose={() => useStore.getState().clearSelection()}>
+            <Inspector />
+          </BottomSheet>
+        )}
       </div>
+
+      {/* ── Mobile/Tablet bottom toolbar ── */}
+      {isMobile && (
+        <MobileToolbar
+          onToggleLeft={() => setLeftOpen((v) => !v)}
+          onToggleRight={() => setRightOpen((v) => !v)}
+        />
+      )}
     </div>
   );
 }

@@ -7,6 +7,11 @@ const DND_TYPE = 'application/x-circuit-component';
 export function Palette() {
   // 「导线」不再作为可放置元件出现；元件之间的连接改由工具栏的「连线」工具完成。
   const components = getRegistry().filter((d) => d.type !== 'wire');
+  const breakpoint = useStore((s) => s.breakpoint);
+  const setTool = useStore((s) => s.setTool);
+  const setPlaceType = useStore((s) => s.setPlaceType);
+
+  const isMobile = breakpoint === 'mobile' || breakpoint === 'tablet';
 
   const addAtCenter = (type: string) => {
     const st = useStore.getState();
@@ -14,6 +19,16 @@ export function Palette() {
     const wx = (viewSize.w / 2 - view.panX) / view.zoom;
     const wy = (viewSize.h / 2 - view.panY) / view.zoom;
     st.addComponent(type, wx, wy);
+  };
+
+  const handleClick = (type: string) => {
+    if (isMobile) {
+      // Mobile: enter place mode — user taps on canvas to position
+      setPlaceType(type);
+      setTool('place');
+    } else {
+      addAtCenter(type);
+    }
   };
 
   return (
@@ -33,7 +48,7 @@ export function Palette() {
                 e.dataTransfer.setData(DND_TYPE, def.type);
                 e.dataTransfer.effectAllowed = 'copy';
               }}
-              onClick={() => addAtCenter(def.type)}
+              onClick={() => handleClick(def.type)}
             >
               <svg width={58} height={34} viewBox="0 0 120 70" className="palette-thumb">
                 <g dangerouslySetInnerHTML={{ __html: art }} />
