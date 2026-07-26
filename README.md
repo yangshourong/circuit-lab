@@ -7,7 +7,7 @@
 
 > **面向中学物理实验教学的在线电路仿真平台。** 纯 TypeScript 电路仿真引擎 + Vite/React/SVG Web 编辑器，支持直流稳态分析（MNA 改进节点分析法），涵盖初中物理全部基本电路元件。
 >
-> **Live Demo:** _（待部署）_
+> **Live Demo:** [https://lab.openhd.cn](https://lab.openhd.cn)
 
 ---
 
