@@ -34,18 +34,18 @@ function bodyReadingLabel(type: string, comp: PlacedComponent, reading?: Compone
 }
 
 /**
- * 开关刀闸动态渲染（仅实物图模式）。
- * 刀闸铰链在左接线柱座 (35, 27)，触点在右接线柱座 (85, 27)。
- * 闭合时刀闸水平搭接；断开时向上翘起约 55°。
- */
+  * 开关刀闸动态渲染（仅实物图模式）。
+  * 刀闸铰链在右支座转轴 (85, 32)，触点在左支座卡槽 (35, 32)。
+  * 闭合时刀闸水平搭接；断开时向上翘起约 55°。
+  */
 function SwitchBlade({ closed }: { closed: boolean }) {
-  // 铰链轴位置（art 本地坐标）
-  const px = 35, py = 27;
-  // 触点位置
-  const cx = 85, cy = 27;
+  // 铰链轴位置（右支座转轴，art 本地坐标）
+  const px = 85, py = 32;
+  // 触点位置（左支座卡槽）
+  const cx = 35, cy = 32;
   // 断开时刀闸末端抬升
-  const ex = closed ? cx : 82;
-  const ey = closed ? cy : 11;
+  const ex = closed ? cx : 38;
+  const ey = closed ? cy : 16;
 
   return (
     <g pointerEvents="none">
@@ -58,8 +58,10 @@ function SwitchBlade({ closed }: { closed: boolean }) {
         x1={px} y1={py} x2={ex} y2={ey}
         stroke="#94a3b8" strokeWidth="2" strokeLinecap="round"
       />
-      {/* 绝缘手柄套（红色） */}
-      <circle cx={ex} cy={ey} r="3.5" fill="#dc2626" stroke="#991b1b" strokeWidth="0.8"/>
+      {/* 绝缘手柄套（灰蓝色圆柱） */}
+      <rect x={ex - 3} y={ey - 5} width="6" height="10" rx="3" fill="#94a3b8" stroke="#64748b" strokeWidth="0.5"/>
+      {/* 手柄顶部凸缘 */}
+      <ellipse cx={ex} cy={ey - 5} rx="3.5" ry="1.5" fill="#94a3b8" stroke="#64748b" strokeWidth="0.3"/>
     </g>
   );
 }
@@ -100,18 +102,29 @@ function RheostatSliderSchematic({ resistance }: { resistance: number }) {
 }
 
 function MultiSwitchWiper({ position }: { position: number }) {
-  const cx = 56, cy = 35;
-  const targets = [14, 28, 42, 56];
+  // COM转轴位置（art 本地坐标）— 与触点同一高度
+  const cx = 15, cy = 28;
+  // 4个档位触点位置（支柱顶部，与转轴同高）
+  const targets = [
+    { x: 39, y: 28 },  // 档位1
+    { x: 59, y: 28 },  // 档位2
+    { x: 79, y: 28 },  // 档位3
+    { x: 99, y: 28 },  // 档位4
+  ];
   // position=0 (断开) 时不显示选择臂
   if (position === 0) return null;
-  const ty = targets[Math.min(position - 1, 3)];
+  const t = targets[Math.min(position - 1, 3)];
 
   return (
     <g pointerEvents="none">
-      {/* 选择臂 */}
-      <line x1={cx} y1={cy} x2={90} y2={ty}
-        stroke="#dc2626" strokeWidth="3" strokeLinecap="round" />
-      <circle cx={90} cy={ty} r="5" fill="#dc2626" opacity="0.25" />
+      {/* 选择臂金属柄 */}
+      <line x1={cx} y1={cy} x2={t.x} y2={t.y}
+        stroke="#cbd5e1" strokeWidth="3.5" strokeLinecap="round" />
+      <line x1={cx} y1={cy} x2={t.x} y2={t.y}
+        stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" />
+      {/* 手柄套（灰蓝色圆柱） */}
+      <rect x={t.x - 3} y={t.y - 5} width="6" height="10" rx="3" fill="#94a3b8" stroke="#64748b" strokeWidth="0.5"/>
+      <ellipse cx={t.x} cy={t.y - 5} rx="3.5" ry="1.5" fill="#94a3b8" stroke="#64748b" strokeWidth="0.3"/>
     </g>
   );
 }
@@ -143,8 +156,8 @@ function LampGlow({ powerRatio }: { powerRatio: number }) {
   if (powerRatio <= 0.01) return null;
 
   const opacity = Math.min(1, powerRatio);
-  // 灯泡玻璃中心约 (60, 23) 在 art 本地坐标
-  const cx = 60, cy = 23;
+  // 灯泡玻璃中心约 (60, 18) 在 art 本地坐标
+  const cx = 60, cy = 18;
   // 光晕半径随亮度略微增大
   const r = 16 + powerRatio * 10;
 
@@ -234,6 +247,9 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
   const labelText = bodyReadingLabel(comp.type, comp, reading);
   const hasPins = def.pins.length > 0;
   const isMeter = comp.type === 'ammeter' || comp.type === 'voltmeter' || comp.type === 'galvanometer';
+  const isLamp = comp.type === 'lamp';
+  const isSwitch = comp.type === 'switch';
+  const isMultiSwitch = comp.type === 'multiSwitch';
   const showReadings = useStore((s) => s.showReadings);
 
   // Meter-specific body dimensions (taller body, same width)
@@ -465,7 +481,7 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
 
           return (
             <g key={p.id}>
-              {mode === 'physical' && !isMeter ? (
+              {mode === 'physical' && !isMeter && !isLamp && !isSwitch && !isMultiSwitch ? (
                 /* ── 普通组件：接线柱在侧面电气引脚位置 ── */
                 <>
                   {wiring && (
@@ -530,6 +546,84 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
                         style={{ cursor: wiring ? 'crosshair' : 'move' }} />
                     </>
                   )}
+                </>
+              ) : mode === 'physical' && isLamp ? (
+                /* ── 灯泡：底座红色接线柱可点击连线 ──
+                    pin 'a' (+) → 左侧接线柱 (-33, 16)
+                    pin 'b' (−) → 右侧接线柱 (33, 16) */
+                <>
+                  {(() => {
+                    const tx = p.id === 'a' ? -33 : 33;
+                    const ty = 16;
+                    return (
+                      <>
+                        {wiring && (
+                          <circle cx={tx} cy={ty} r={armed ? 13 : 11}
+                            fill={armed ? 'rgba(22,163,74,0.22)' : 'rgba(37,99,235,0.16)'}
+                            stroke={armed ? '#16a34a' : '#2563eb'}
+                            strokeWidth={armed ? 2.5 : 1.5} pointerEvents="none" />
+                        )}
+                        <circle cx={tx} cy={ty} r={wiring ? 11 : 9}
+                          fill="transparent" data-comp={comp.id} data-pin={p.id}
+                          style={{ cursor: wiring ? 'crosshair' : 'move' }} />
+                      </>
+                    );
+                  })()}
+                </>
+              ) : mode === 'physical' && isSwitch ? (
+                /* ── 开关：底座红色接线柱可点击连线 ──
+                    pin 'a' (+) → 左侧接线柱 (-33, 16)
+                    pin 'b' (−) → 右侧接线柱 (33, 16) */
+                <>
+                  {(() => {
+                    const tx = p.id === 'a' ? -33 : 33;
+                    const ty = 16;
+                    return (
+                      <>
+                        {wiring && (
+                          <circle cx={tx} cy={ty} r={armed ? 13 : 11}
+                            fill={armed ? 'rgba(22,163,74,0.22)' : 'rgba(37,99,235,0.16)'}
+                            stroke={armed ? '#16a34a' : '#2563eb'}
+                            strokeWidth={armed ? 2.5 : 1.5} pointerEvents="none" />
+                        )}
+                        <circle cx={tx} cy={ty} r={wiring ? 11 : 9}
+                          fill="transparent" data-comp={comp.id} data-pin={p.id}
+                          style={{ cursor: wiring ? 'crosshair' : 'move' }} />
+                      </>
+                    );
+                  })()}
+                </>
+              ) : mode === 'physical' && isMultiSwitch ? (
+                /* ── 多向开关：底座接线柱可点击连线 ──
+                    pin 'a' (COM) → (-45, 16)
+                    pin 'b' (1) → (-21, 16)
+                    pin 'c' (2) → (-1, 16)
+                    pin 'd' (3) → (19, 16)
+                    pin 'e' (4) → (39, 16) */
+                <>
+                  {(() => {
+                    const posMap: Record<string, { x: number; y: number }> = {
+                      a: { x: -45, y: 16 },
+                      b: { x: -21, y: 16 },
+                      c: { x: -1, y: 16 },
+                      d: { x: 19, y: 16 },
+                      e: { x: 39, y: 16 },
+                    };
+                    const t = posMap[p.id] ?? { x: l.x, y: l.y };
+                    return (
+                      <>
+                        {wiring && (
+                          <circle cx={t.x} cy={t.y} r={armed ? 13 : 11}
+                            fill={armed ? 'rgba(22,163,74,0.22)' : 'rgba(37,99,235,0.16)'}
+                            stroke={armed ? '#16a34a' : '#2563eb'}
+                            strokeWidth={armed ? 2.5 : 1.5} pointerEvents="none" />
+                        )}
+                        <circle cx={t.x} cy={t.y} r={wiring ? 11 : 9}
+                          fill="transparent" data-comp={comp.id} data-pin={p.id}
+                          style={{ cursor: wiring ? 'crosshair' : 'move' }} />
+                      </>
+                    );
+                  })()}
                 </>
               ) : (
                 /* ── 电路图模式：标准连接节点 ── */

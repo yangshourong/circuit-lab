@@ -30,6 +30,49 @@ function isMeterType(type: string): boolean {
   return type === 'ammeter' || type === 'voltmeter' || type === 'galvanometer';
 }
 
+/** 灯泡类型判断 */
+function isLampType(type: string): boolean {
+  return type === 'lamp';
+}
+
+/** 开关类型判断 */
+function isSwitchType(type: string): boolean {
+  return type === 'switch';
+}
+
+/** 多向开关类型判断 */
+function isMultiSwitchType(type: string): boolean {
+  return type === 'multiSwitch';
+}
+
+/**
+ * 灯泡/开关在物理模式下的底座接线柱本地坐标。
+ *   pin 'a' (+) → 左侧红色接线柱 (-33, 16)
+ *   pin 'b' (−) → 右侧红色接线柱 (33, 16)
+ */
+function lampTerminalLocal(_comp: PlacedComponent, pinId: string): { x: number; y: number } {
+  return pinId === 'a' ? { x: -33, y: 16 } : { x: 33, y: 16 };
+}
+
+/**
+ * 多向开关在物理模式下的底座接线柱本地坐标。
+ *   COM (pin 'a') → (-45, 16)
+ *   1   (pin 'b') → (-21, 16)
+ *   2   (pin 'c') → (-1, 16)
+ *   3   (pin 'd') → (19, 16)
+ *   4   (pin 'e') → (39, 16)
+ */
+function multiSwitchTerminalLocal(_comp: PlacedComponent, pinId: string): { x: number; y: number } {
+  const map: Record<string, { x: number; y: number }> = {
+    a: { x: -45, y: 16 },
+    b: { x: -21, y: 16 },
+    c: { x: -1, y: 16 },
+    d: { x: 19, y: 16 },
+    e: { x: 39, y: 16 },
+  };
+  return map[pinId] ?? { x: 0, y: 0 };
+}
+
 /**
  * 仪表在物理模式下的底部接线柱本地坐标。
  * 三种接线柱：
@@ -52,12 +95,23 @@ function meterTerminalLocal(comp: PlacedComponent, pinId: string): { x: number; 
  * 仪表在物理模式下的底部接线柱世界坐标。
  * 考虑组件旋转变换。非仪表返回 null。
  */
+/**
+ * 组件在物理模式下的接线柱世界坐标（仪表 + 灯泡 + 开关 + 多向开关）。
+ * 非上述类型返回 null。
+ */
 export function meterPhysicalEndpoint(
   comp: PlacedComponent,
   pinId: string,
 ): { x: number; y: number } | null {
-  if (!isMeterType(comp.type)) return null;
-  const local = meterTerminalLocal(comp, pinId);
+  let local: { x: number; y: number } | null = null;
+  if (isMeterType(comp.type)) {
+    local = meterTerminalLocal(comp, pinId);
+  } else if (isLampType(comp.type) || isSwitchType(comp.type)) {
+    local = lampTerminalLocal(comp, pinId);
+  } else if (isMultiSwitchType(comp.type)) {
+    local = multiSwitchTerminalLocal(comp, pinId);
+  }
+  if (!local) return null;
   const rad = ((comp.rotation ?? 0) * Math.PI) / 180;
   const cos = Math.cos(rad);
   const sin = Math.sin(rad);

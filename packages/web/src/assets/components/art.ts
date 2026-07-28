@@ -198,15 +198,29 @@ export const COMPONENT_ART: Record<string, ComponentArt> = {
   // ═════════════════════════════════════════════════════════════
   switch: {
     physical: `
-<line x1="8" y1="35" x2="22" y2="35" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
-<line x1="98" y1="35" x2="112" y2="35" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
-<rect x="18" y="18" width="84" height="34" rx="4" fill="url(#plastic)" stroke="#94a3b8" stroke-width="1" filter="url(#shadowSm)"/>
-<!-- 底座接线柱 -->
-<circle cx="35" cy="27" r="4" fill="url(#metalH)" stroke="#64748b" stroke-width="1"/>
-<circle cx="85" cy="27" r="4" fill="url(#metalH)" stroke="#64748b" stroke-width="1"/>
-<!-- 刀闸铰链 -->
-<circle cx="35" cy="27" r="2" fill="#475569"/>
-<text x="60" y="46" font-family="sans-serif" font-size="6" fill="#334155" text-anchor="middle">开关</text>
+<!-- 底座 -->
+<rect x="14" y="42" width="92" height="22" rx="4" fill="url(#plastic)" stroke="#64748b" stroke-width="1" filter="url(#shadowSm)"/>
+<rect x="15" y="43" width="90" height="3" rx="1.5" fill="white" opacity="0.08"/>
+<!-- 底座侧面深色 -->
+<rect x="15" y="55" width="90" height="8" rx="2" fill="#475569" opacity="0.15"/>
+<!-- 左接线柱 (pin a +) -->
+<rect x="22" y="46" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<rect x="23" y="46" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
+<!-- 右接线柱 (pin b −) -->
+<rect x="88" y="46" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<rect x="89" y="46" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
+<!-- 左金属支座（卡槽端） -->
+<rect x="32" y="32" width="6" height="12" rx="1" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.5"/>
+<!-- 卡槽 -->
+<rect x="30" y="32" width="10" height="3" rx="0.5" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.4"/>
+<line x1="35" y1="33" x2="35" y2="35" stroke="#64748b" stroke-width="0.6"/>
+<!-- 右金属支座（转轴端） -->
+<rect x="82" y="32" width="6" height="12" rx="1" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.5"/>
+<!-- 转轴 -->
+<circle cx="85" cy="32" r="2.5" fill="#fbbf24" stroke="#92400e" stroke-width="0.5"/>
+<!-- 接线柱极性标识 -->
+<text x="27" y="59" font-family="sans-serif" font-size="3.5" fill="#dc2626" text-anchor="middle" font-weight="bold">+</text>
+<text x="93" y="59" font-family="sans-serif" font-size="3.5" fill="#0f172a" text-anchor="middle" font-weight="bold">−</text>
 `.trim(),
     schematic: `
 <line x1="8" y1="35" x2="35" y2="35" stroke="#334155" stroke-width="2.5" stroke-linecap="round"/>
@@ -220,17 +234,43 @@ export const COMPONENT_ART: Record<string, ComponentArt> = {
   // 2b. 多向开关
   multiSwitch: {
     physical: `
-<rect x="15" y="15" width="90" height="40" rx="4" fill="url(#plastic)" stroke="#94a3b8" stroke-width="1" filter="url(#shadowSm)"/>
-<circle cx="30" cy="35" r="5" fill="url(#metalH)" stroke="#64748b" stroke-width="1"/>
-<circle cx="55" cy="22" r="4" fill="url(#metalH)" stroke="#64748b" stroke-width="0.8"/>
-<circle cx="70" cy="22" r="4" fill="url(#metalH)" stroke="#64748b" stroke-width="0.8"/>
-<circle cx="85" cy="22" r="4" fill="url(#metalH)" stroke="#64748b" stroke-width="0.8"/>
-<circle cx="100" cy="22" r="4" fill="url(#metalH)" stroke="#64748b" stroke-width="0.8"/>
-<text x="30" y="48" font-family="sans-serif" font-size="5" fill="#334155" text-anchor="middle">COM</text>
-<text x="55" y="17" font-family="sans-serif" font-size="5" fill="#64748b" text-anchor="middle">1</text>
-<text x="70" y="17" font-family="sans-serif" font-size="5" fill="#64748b" text-anchor="middle">2</text>
-<text x="85" y="17" font-family="sans-serif" font-size="5" fill="#64748b" text-anchor="middle">3</text>
-<text x="100" y="17" font-family="sans-serif" font-size="5" fill="#64748b" text-anchor="middle">4</text>
+<!-- 底座 -->
+<rect x="5" y="42" width="110" height="22" rx="4" fill="url(#plastic)" stroke="#64748b" stroke-width="1" filter="url(#shadowSm)"/>
+<rect x="6" y="43" width="108" height="3" rx="1.5" fill="white" opacity="0.08"/>
+<rect x="6" y="55" width="108" height="8" rx="2" fill="#475569" opacity="0.15"/>
+<!-- COM接线柱 (pin a) -->
+<rect x="10" y="46" width="10" height="8" rx="2" fill="#1e293b" stroke="#0f172a" stroke-width="0.5"/>
+<rect x="11" y="46" width="8" height="3" rx="1" fill="#475569" opacity="0.3"/>
+<text x="15" y="59" font-family="sans-serif" font-size="3" fill="#94a3b8" text-anchor="middle">COM</text>
+<!-- 档位1接线柱 (pin b) -->
+<rect x="34" y="46" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<rect x="35" y="46" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
+<text x="39" y="59" font-family="sans-serif" font-size="3.5" fill="#64748b" text-anchor="middle">1</text>
+<!-- 档位2接线柱 (pin c) -->
+<rect x="54" y="46" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<rect x="55" y="46" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
+<text x="59" y="59" font-family="sans-serif" font-size="3.5" fill="#64748b" text-anchor="middle">2</text>
+<!-- 档位3接线柱 (pin d) -->
+<rect x="74" y="46" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<rect x="75" y="46" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
+<text x="79" y="59" font-family="sans-serif" font-size="3.5" fill="#64748b" text-anchor="middle">3</text>
+<!-- 档位4接线柱 (pin e) -->
+<rect x="94" y="46" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<rect x="95" y="46" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
+<text x="99" y="59" font-family="sans-serif" font-size="3.5" fill="#64748b" text-anchor="middle">4</text>
+<!-- COM转轴金属支座 -->
+<rect x="11" y="28" width="8" height="14" rx="1" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.5"/>
+<circle cx="15" cy="28" r="2.5" fill="#fbbf24" stroke="#92400e" stroke-width="0.5"/>
+<!-- 4个档位金属支柱（从底座面上升到转轴高度） -->
+<rect x="37" y="28" width="4" height="14" rx="1" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.4"/>
+<rect x="57" y="28" width="4" height="14" rx="1" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.4"/>
+<rect x="77" y="28" width="4" height="14" rx="1" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.4"/>
+<rect x="97" y="28" width="4" height="14" rx="1" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.4"/>
+<!-- 档位触点（支柱顶部金属圆点） -->
+<circle cx="39" cy="28" r="2.5" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.4"/>
+<circle cx="59" cy="28" r="2.5" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.4"/>
+<circle cx="79" cy="28" r="2.5" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.4"/>
+<circle cx="99" cy="28" r="2.5" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.4"/>
 `.trim(),
     schematic: `
 <circle cx="20" cy="35" r="3" fill="none" stroke="#334155" stroke-width="2"/>
@@ -250,17 +290,35 @@ export const COMPONENT_ART: Record<string, ComponentArt> = {
   // ═════════════════════════════════════════════════════════════
   lamp: {
     physical: `
-<line x1="8" y1="35" x2="25" y2="35" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
-<line x1="95" y1="35" x2="112" y2="35" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
 <!-- 底座 -->
-<rect x="22" y="42" width="76" height="14" rx="3" fill="url(#plastic)" stroke="#94a3b8" stroke-width="1" filter="url(#shadowSm)"/>
-<!-- 灯泡 -->
-<ellipse cx="60" cy="28" rx="20" ry="22" fill="url(#glass)" stroke="#94a3b8" stroke-width="1"/>
-<!-- 灯丝 -->
-<path d="M52 35 L56 22 L60 35 L64 22 L68 35" fill="none" stroke="#b45309" stroke-width="0.8"/>
-<!-- 正负极标识 -->
-<text x="8" y="30" font-family="sans-serif" font-size="8" fill="#dc2626" font-weight="bold">+</text>
-<text x="106" y="30" font-family="sans-serif" font-size="8" fill="#0f172a" font-weight="bold">−</text>
+<rect x="18" y="53" width="84" height="12" rx="3" fill="url(#plastic)" stroke="#64748b" stroke-width="1" filter="url(#shadowSm)"/>
+<rect x="19" y="54" width="82" height="3" rx="1.5" fill="white" opacity="0.08"/>
+<!-- 左接线柱 (pin a +) -->
+<rect x="22" y="47" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<rect x="23" y="47" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
+<!-- 右接线柱 (pin b −) -->
+<rect x="88" y="47" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<rect x="89" y="47" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
+<!-- 灯座承托台 -->
+<rect x="44" y="41" width="32" height="14" rx="5" fill="url(#plastic)" stroke="#64748b" stroke-width="0.8"/>
+<rect x="45" y="42" width="30" height="3" rx="1.5" fill="white" opacity="0.08"/>
+<!-- 螺口灯头 -->
+<rect x="48" y="33" width="24" height="10" rx="2" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.5"/>
+<line x1="48" y1="36" x2="72" y2="36" stroke="#64748b" stroke-width="0.4" opacity="0.5"/>
+<line x1="48" y1="38.5" x2="72" y2="38.5" stroke="#64748b" stroke-width="0.4" opacity="0.5"/>
+<line x1="48" y1="41" x2="72" y2="41" stroke="#64748b" stroke-width="0.4" opacity="0.5"/>
+<!-- 玻璃泡 -->
+<ellipse cx="60" cy="18" rx="18" ry="17" fill="url(#glass)" stroke="#94a3b8" stroke-width="0.8"/>
+<!-- 灯丝支架 -->
+<line x1="56" y1="33" x2="56" y2="20" stroke="#b45309" stroke-width="0.6"/>
+<line x1="64" y1="33" x2="64" y2="20" stroke="#b45309" stroke-width="0.6"/>
+<!-- 灯丝（U形） -->
+<path d="M56 20 Q60 10 64 20" fill="none" stroke="#b45309" stroke-width="0.8"/>
+<!-- 玻璃高光 -->
+<ellipse cx="53" cy="13" rx="6" ry="4" fill="white" opacity="0.35"/>
+<!-- 接线柱极性标识 -->
+<text x="27" y="60" font-family="sans-serif" font-size="3.5" fill="#dc2626" text-anchor="middle" font-weight="bold">+</text>
+<text x="93" y="60" font-family="sans-serif" font-size="3.5" fill="#0f172a" text-anchor="middle" font-weight="bold">−</text>
 `.trim(),
     schematic: `
 <line x1="8" y1="35" x2="35" y2="35" stroke="#334155" stroke-width="2.5" stroke-linecap="round"/>
