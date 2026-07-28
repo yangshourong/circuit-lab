@@ -144,7 +144,7 @@ function LampGlow({ powerRatio }: { powerRatio: number }) {
 
   const opacity = Math.min(1, powerRatio);
   // 灯泡玻璃中心约 (60, 23) 在 art 本地坐标
-  const cx = 60, cy = 23;
+  const cx = 60, cy = 18;
   // 光晕半径随亮度略微增大
   const r = 16 + powerRatio * 10;
 
