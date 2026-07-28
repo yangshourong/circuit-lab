@@ -102,14 +102,14 @@ function RheostatSliderSchematic({ resistance }: { resistance: number }) {
 }
 
 function MultiSwitchWiper({ position }: { position: number }) {
-  // COM转轴位置（art 本地坐标）— 与触点同一高度
-  const cx = 15, cy = 28;
-  // 4个档位触点位置（支柱顶部，与转轴同高）
+  // COM转轴位置（俯视 art 本地坐标）
+  const cx = 16, cy = 35;
+  // 4个档位触点位置（沿弧线排列，半径50，以COM为圆心）
   const targets = [
-    { x: 39, y: 28 },  // 档位1
-    { x: 59, y: 28 },  // 档位2
-    { x: 79, y: 28 },  // 档位3
-    { x: 99, y: 28 },  // 档位4
+    { x: 54, y: 3 },   // 档位1  (−40°)
+    { x: 65, y: 24 },  // 档位2  (−13°)
+    { x: 65, y: 46 },  // 档位3  (+13°)
+    { x: 54, y: 67 },  // 档位4  (+40°)
   ];
   // position=0 (断开) 时不显示选择臂
   if (position === 0) return null;
@@ -117,14 +117,14 @@ function MultiSwitchWiper({ position }: { position: number }) {
 
   return (
     <g pointerEvents="none">
-      {/* 选择臂金属柄 */}
+      {/* 选择臂金属柄（宽底细顶，模拟扁金属条俯视） */}
       <line x1={cx} y1={cy} x2={t.x} y2={t.y}
-        stroke="#cbd5e1" strokeWidth="3.5" strokeLinecap="round" />
+        stroke="#cbd5e1" strokeWidth="4" strokeLinecap="round" />
       <line x1={cx} y1={cy} x2={t.x} y2={t.y}
-        stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" />
-      {/* 手柄套（灰蓝色圆柱） */}
-      <rect x={t.x - 3} y={t.y - 5} width="6" height="10" rx="3" fill="#94a3b8" stroke="#64748b" strokeWidth="0.5"/>
-      <ellipse cx={t.x} cy={t.y - 5} rx="3.5" ry="1.5" fill="#94a3b8" stroke="#64748b" strokeWidth="0.3"/>
+        stroke="#b0b8c4" strokeWidth="2.5" strokeLinecap="round" />
+      {/* 手柄（俯视圆形旋钮） */}
+      <circle cx={t.x} cy={t.y} r="4.5" fill="#64748b" stroke="#475569" strokeWidth="0.6"/>
+      <circle cx={t.x} cy={t.y} r="2.5" fill="#94a3b8" stroke="#64748b" strokeWidth="0.4"/>
     </g>
   );
 }
@@ -594,20 +594,20 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
                   })()}
                 </>
               ) : mode === 'physical' && isMultiSwitch ? (
-                /* ── 多向开关：底座接线柱可点击连线 ──
-                    pin 'a' (COM) → (-45, 16)
-                    pin 'b' (1) → (-21, 16)
-                    pin 'c' (2) → (-1, 16)
-                    pin 'd' (3) → (19, 16)
-                    pin 'e' (4) → (39, 16) */
+                /* ── 多向开关：底座接线柱可点击连线（俯视布局） ──
+                    pin 'a' (COM) → (-45, 24)
+                    pin 'b' (1) → (-21, 24)
+                    pin 'c' (2) → (-1, 24)
+                    pin 'd' (3) → (19, 24)
+                    pin 'e' (4) → (39, 24) */
                 <>
                   {(() => {
                     const posMap: Record<string, { x: number; y: number }> = {
-                      a: { x: -45, y: 16 },
-                      b: { x: -21, y: 16 },
-                      c: { x: -1, y: 16 },
-                      d: { x: 19, y: 16 },
-                      e: { x: 39, y: 16 },
+                      a: { x: -45, y: 24 },
+                      b: { x: -21, y: 24 },
+                      c: { x: -1, y: 24 },
+                      d: { x: 19, y: 24 },
+                      e: { x: 39, y: 24 },
                     };
                     const t = posMap[p.id] ?? { x: l.x, y: l.y };
                     return (
