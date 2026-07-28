@@ -103,13 +103,13 @@ function RheostatSliderSchematic({ resistance }: { resistance: number }) {
 
 function MultiSwitchWiper({ position }: { position: number }) {
   // COM转轴位置（俯视 art 本地坐标）
-  const cx = 16, cy = 35;
-  // 4个档位触点位置（沿弧线排列，半径50，以COM为圆心）
+  const cx = 18, cy = 35;
+  // 4个档位触点位置（沿弧线排列，半径35，以COM为圆心，间隔紧凑）
   const targets = [
-    { x: 54, y: 3 },   // 档位1  (−40°)
-    { x: 65, y: 24 },  // 档位2  (−13°)
-    { x: 65, y: 46 },  // 档位3  (+13°)
-    { x: 54, y: 67 },  // 档位4  (+40°)
+    { x: 50, y: 20 },  // 档位1  (−25°)
+    { x: 53, y: 30 },  // 档位2  (−8°)
+    { x: 53, y: 40 },  // 档位3  (+8°)
+    { x: 50, y: 50 },  // 档位4  (+25°)
   ];
   // position=0 (断开) 时不显示选择臂
   if (position === 0) return null;
@@ -595,19 +595,19 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
                 </>
               ) : mode === 'physical' && isMultiSwitch ? (
                 /* ── 多向开关：底座接线柱可点击连线（俯视布局） ──
-                    pin 'a' (COM) → (-45, 24)
-                    pin 'b' (1) → (-21, 24)
-                    pin 'c' (2) → (-1, 24)
-                    pin 'd' (3) → (19, 24)
-                    pin 'e' (4) → (39, 24) */
+                    pin 'a' (COM) → (-48, 23)   左下黑色接线柱
+                    pin 'b' (1) → (43, -17.5)   右上红色接线柱
+                    pin 'c' (2) → (43, -6.5)
+                    pin 'd' (3) → (43, 4.5)
+                    pin 'e' (4) → (43, 15.5)    右下红色接线柱 */
                 <>
                   {(() => {
                     const posMap: Record<string, { x: number; y: number }> = {
-                      a: { x: -45, y: 24 },
-                      b: { x: -21, y: 24 },
-                      c: { x: -1, y: 24 },
-                      d: { x: 19, y: 24 },
-                      e: { x: 39, y: 24 },
+                      a: { x: -48, y: 23 },
+                      b: { x: 43, y: -17.5 },
+                      c: { x: 43, y: -6.5 },
+                      d: { x: 43, y: 4.5 },
+                      e: { x: 43, y: 15.5 },
                     };
                     const t = posMap[p.id] ?? { x: l.x, y: l.y };
                     return (

@@ -56,19 +56,19 @@ function lampTerminalLocal(_comp: PlacedComponent, pinId: string): { x: number; 
 
 /**
  * 多向开关在物理模式下的底座接线柱本地坐标（俯视布局）。
- *   COM (pin 'a') → (-45, 24)
- *   1   (pin 'b') → (-21, 24)
- *   2   (pin 'c') → (-1, 24)
- *   3   (pin 'd') → (19, 24)
- *   4   (pin 'e') → (39, 24)
+ *   COM (pin 'a') → (-48, 23)   左下黑色接线柱
+ *   1   (pin 'b') → (43, -17.5) 右上红色接线柱
+ *   2   (pin 'c') → (43, -6.5)
+ *   3   (pin 'd') → (43, 4.5)
+ *   4   (pin 'e') → (43, 15.5)  右下红色接线柱
  */
 function multiSwitchTerminalLocal(_comp: PlacedComponent, pinId: string): { x: number; y: number } {
   const map: Record<string, { x: number; y: number }> = {
-    a: { x: -45, y: 24 },
-    b: { x: -21, y: 24 },
-    c: { x: -1, y: 24 },
-    d: { x: 19, y: 24 },
-    e: { x: 39, y: 24 },
+    a: { x: -48, y: 23 },
+    b: { x: 43, y: -17.5 },
+    c: { x: 43, y: -6.5 },
+    d: { x: 43, y: 4.5 },
+    e: { x: 43, y: 15.5 },
   };
   return map[pinId] ?? { x: 0, y: 0 };
 }

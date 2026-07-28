@@ -232,49 +232,50 @@ export const COMPONENT_ART: Record<string, ComponentArt> = {
   },
 
   // 2b. 多向开关（俯视平面图）
-  // COM转轴 (16,35)，4档位触点沿弧线排列在半径50处
-  // 档位1(-40°)→(54,3)  档位2(-13°)→(65,24)  档位3(+13°)→(65,46)  档位4(+40°)→(54,67)
+  // COM转轴 (18,35)，4档位触点沿弧线排列在半径35处
+  // 档位1(-25°)→(50,20)  档位2(-8°)→(53,30)  档位3(+8°)→(53,40)  档位4(+25°)→(50,50)
+  // 4红接线柱在右侧纵列，COM接线柱在左下
   multiSwitch: {
     physical: `
 <!-- 底座（俯视矩形面板） -->
-<rect x="3" y="1" width="114" height="68" rx="5" fill="url(#plastic)" stroke="#64748b" stroke-width="1" filter="url(#shadowSm)"/>
-<rect x="5" y="3" width="110" height="2" rx="1" fill="white" opacity="0.1"/>
+<rect x="2" y="2" width="116" height="66" rx="5" fill="url(#plastic)" stroke="#64748b" stroke-width="1" filter="url(#shadowSm)"/>
+<rect x="4" y="4" width="112" height="2" rx="1" fill="white" opacity="0.1"/>
 <!-- 底座表面标签 -->
-<text x="38" y="9" font-family="sans-serif" font-size="4" fill="#64748b" text-anchor="middle" letter-spacing="1">多向开关</text>
+<text x="34" y="10" font-family="sans-serif" font-size="4" fill="#64748b" text-anchor="middle" letter-spacing="1">多向开关</text>
 <!-- 选择臂旋转导弧（虚线弧，从档位1到档位4） -->
-<path d="M 54 3 A 50 50 0 0 1 54 67" fill="none" stroke="#94a3b8" stroke-width="0.6" stroke-dasharray="2,1.5"/>
-<!-- 4个档位金属触点（俯视圆点，沿弧线排列） -->
-<circle cx="54" cy="3" r="3.5" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.5"/>
-<circle cx="65" cy="24" r="3.5" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.5"/>
-<circle cx="65" cy="46" r="3.5" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.5"/>
-<circle cx="54" cy="67" r="3.5" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.5"/>
+<path d="M 50 20 A 35 35 0 0 1 50 50" fill="none" stroke="#94a3b8" stroke-width="0.6" stroke-dasharray="2,1.5"/>
+<!-- 4个档位金属触点（俯视圆点，沿弧线排列，间隔紧凑） -->
+<circle cx="50" cy="20" r="3" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.5"/>
+<circle cx="53" cy="30" r="3" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.5"/>
+<circle cx="53" cy="40" r="3" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.5"/>
+<circle cx="50" cy="50" r="3" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.5"/>
 <!-- 档位数字标注 -->
-<text x="61" y="6" font-family="sans-serif" font-size="4.5" fill="#475569" text-anchor="start" font-weight="bold">1</text>
-<text x="72" y="27" font-family="sans-serif" font-size="4.5" fill="#475569" text-anchor="start" font-weight="bold">2</text>
-<text x="72" y="49" font-family="sans-serif" font-size="4.5" fill="#475569" text-anchor="start" font-weight="bold">3</text>
-<text x="61" y="64" font-family="sans-serif" font-size="4.5" fill="#475569" text-anchor="start" font-weight="bold">4</text>
+<text x="58" y="22" font-family="sans-serif" font-size="4" fill="#475569" text-anchor="start" font-weight="bold">1</text>
+<text x="58" y="32" font-family="sans-serif" font-size="4" fill="#475569" text-anchor="start" font-weight="bold">2</text>
+<text x="58" y="42" font-family="sans-serif" font-size="4" fill="#475569" text-anchor="start" font-weight="bold">3</text>
+<text x="58" y="52" font-family="sans-serif" font-size="4" fill="#475569" text-anchor="start" font-weight="bold">4</text>
 <!-- COM转轴（俯视金属圆） -->
-<circle cx="16" cy="35" r="6" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.8"/>
-<circle cx="16" cy="35" r="3.5" fill="#fbbf24" stroke="#92400e" stroke-width="0.5"/>
-<circle cx="16" cy="35" r="1.5" fill="#78716c"/>
-<text x="16" y="24" font-family="sans-serif" font-size="3.5" fill="#475569" text-anchor="middle" font-weight="bold">COM</text>
-<!-- 底部接线柱带（底座前缘可见） -->
-<rect x="5" y="56" width="110" height="9" rx="3" fill="#d1d5db" stroke="#94a3b8" stroke-width="0.5"/>
-<!-- COM黑色接线柱 (pin a) -->
-<rect x="10" y="57" width="10" height="7" rx="2" fill="#1e293b" stroke="#0f172a" stroke-width="0.5"/>
-<text x="15" y="61.5" font-family="sans-serif" font-size="2.5" fill="#94a3b8" text-anchor="middle">COM</text>
-<!-- 档位1红色接线柱 (pin b) -->
-<rect x="34" y="57" width="10" height="7" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
-<text x="39" y="61.5" font-family="sans-serif" font-size="3" fill="#f1f5f9" text-anchor="middle">1</text>
+<circle cx="18" cy="35" r="5.5" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.8"/>
+<circle cx="18" cy="35" r="3" fill="#fbbf24" stroke="#92400e" stroke-width="0.5"/>
+<circle cx="18" cy="35" r="1.2" fill="#78716c"/>
+<text x="18" y="26" font-family="sans-serif" font-size="3.5" fill="#475569" text-anchor="middle" font-weight="bold">COM</text>
+<!-- 右侧接线柱区域 -->
+<rect x="92" y="10" width="22" height="52" rx="3" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.4" opacity="0.4"/>
+<!-- COM黑色接线柱 (pin a) — 左下 -->
+<rect x="6" y="54" width="12" height="8" rx="2" fill="#1e293b" stroke="#0f172a" stroke-width="0.5"/>
+<text x="12" y="59" font-family="sans-serif" font-size="2.5" fill="#94a3b8" text-anchor="middle">COM</text>
+<!-- 档位1红色接线柱 (pin b) — 右上 -->
+<rect x="96" y="14" width="14" height="7" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<text x="103" y="19" font-family="sans-serif" font-size="3" fill="#f1f5f9" text-anchor="middle">1</text>
 <!-- 档位2红色接线柱 (pin c) -->
-<rect x="54" y="57" width="10" height="7" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
-<text x="59" y="61.5" font-family="sans-serif" font-size="3" fill="#f1f5f9" text-anchor="middle">2</text>
+<rect x="96" y="25" width="14" height="7" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<text x="103" y="30" font-family="sans-serif" font-size="3" fill="#f1f5f9" text-anchor="middle">2</text>
 <!-- 档位3红色接线柱 (pin d) -->
-<rect x="74" y="57" width="10" height="7" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
-<text x="79" y="61.5" font-family="sans-serif" font-size="3" fill="#f1f5f9" text-anchor="middle">3</text>
-<!-- 档位4红色接线柱 (pin e) -->
-<rect x="94" y="57" width="10" height="7" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
-<text x="99" y="61.5" font-family="sans-serif" font-size="3" fill="#f1f5f9" text-anchor="middle">4</text>
+<rect x="96" y="36" width="14" height="7" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<text x="103" y="41" font-family="sans-serif" font-size="3" fill="#f1f5f9" text-anchor="middle">3</text>
+<!-- 档位4红色接线柱 (pin e) — 右下 -->
+<rect x="96" y="47" width="14" height="7" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<text x="103" y="52" font-family="sans-serif" font-size="3" fill="#f1f5f9" text-anchor="middle">4</text>
 `.trim(),
     schematic: `
 <circle cx="20" cy="35" r="3" fill="none" stroke="#334155" stroke-width="2"/>
