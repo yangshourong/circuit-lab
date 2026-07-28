@@ -6,6 +6,7 @@ import { ComponentView } from './ComponentView';
 import { CurrentFlow } from './CurrentFlow';
 import {
   pinWorld,
+  meterPhysicalEndpoint,
   physicalWirePath,
   physicalWireMidpoint,
   schematicWirePath,
@@ -369,6 +370,29 @@ export function Editor() {
       let hitPin: PinRef | null = null;
       if (pinEl) {
         hitPin = { componentId: pinEl.getAttribute('data-comp')!, pin: pinEl.getAttribute('data-pin')! };
+        // ── 仪表接线柱量程自动切换：点击低量程/高量程接线柱时，自动切换该仪表的量程参数 ──
+        const rangeAttr = pinEl.getAttribute('data-range');
+        if (rangeAttr) {
+          const meterComp = st.graph.components.find((c) => c.id === hitPin!.componentId);
+          if (meterComp) {
+            const isMeter = meterComp.type === 'ammeter' || meterComp.type === 'voltmeter' || meterComp.type === 'galvanometer';
+            if (isMeter) {
+              // 根据仪表类型和点击的接线柱，确定对应的量程值
+              const rangeMap: Record<string, { low: string; high: string }> = {
+                ammeter:  { low: '0.6A', high: '3A' },
+                voltmeter: { low: '3V', high: '15V' },
+                galvanometer: { low: '0.5A', high: '1A' },
+              };
+              const ranges = rangeMap[meterComp.type];
+              if (ranges) {
+                const newRange = rangeAttr === 'low' ? ranges.low : ranges.high;
+                if (meterComp.params?.range !== newRange) {
+                  st.updateParam(meterComp.id, 'range', newRange);
+                }
+              }
+            }
+          }
+        }
       } else {
         hitPin = findPinAt(world, st.wireStart ?? undefined, WIRE_SNAP_PX);
       }
@@ -544,9 +568,8 @@ export function Editor() {
       <g transform={`translate(${view.panX} ${view.panY}) scale(${view.zoom})`}>
         <rect x={-10000} y={-10000} width={20000} height={20000} fill="url(#grid)" />
 
-        {/* ═══ WIRES ═══ */}
-        {view.mode === 'schematic' && schemLayout ? (
-          // ── Schematic mode: auto-generated orthogonal wire paths + junction dots ──
+        {/* ═══ SCHEMATIC WIRES (below components, textbook style) ═══ */}
+        {view.mode === 'schematic' && schemLayout && (
           <>
             {schemLayout.wires.map((sw) => {
               const selected = selectedIds.includes(sw.id);
@@ -569,88 +592,6 @@ export function Editor() {
               <circle key={`jn-${n.id}`} cx={n.x} cy={n.y} r={NODE_RADIUS} fill="#1e293b" pointerEvents="none" />
             ))}
           </>
-        ) : (
-          // ── Physical mode: curved cable paths between real pin positions ──
-          graph.wires.map((w) => {
-            const fc = componentMap.get(w.from.componentId);
-            const tc = componentMap.get(w.to.componentId);
-            if (!fc || !tc) return null;
-            const a = pinWorld(fc, w.from.pin);
-            const b = pinWorld(tc, w.to.pin);
-            const selected =
-              selectedIds.includes(w.id) ||
-              selectedIds.includes(w.from.componentId) ||
-              selectedIds.includes(w.to.componentId);
-            // Freehand-drawn wires keep the user's routing (warped to follow
-            // moved components); wires without a trail use the default drape.
-            const d = w.path && w.path.length >= 3
-              ? smoothTrailPath(warpTrail(w.path as Pt[], a, b))
-              : physicalWirePath(a, b);
-            return (
-              <g key={w.id}>
-                <>
-                  <path d={d} fill="none" stroke={selected ? '#2563eb' : '#0f172a'} strokeWidth={selected ? 7 : 6} strokeLinecap="round" />
-                  <path d={d} fill="none" stroke="#e2e8f0" strokeWidth={3.5} strokeLinecap="round" />
-                </>
-                <path d={d} fill="none" stroke="transparent" strokeWidth={12} data-wire={w.id} style={{ cursor: 'pointer', pointerEvents: 'stroke' }} />
-                {/* wire label at midpoint of actual bezier path */}
-                {w.label && (() => {
-                  const mid = w.path && w.path.length >= 3
-                    ? warpTrail(w.path as Pt[], a, b)[Math.floor((w.path.length - 1) / 2)]
-                    : physicalWireMidpoint(a, b);
-                  const midPt = Array.isArray(mid) ? { x: mid[0], y: mid[1] } : mid;
-                  return (
-                    <text x={midPt.x} y={midPt.y - 2}
-                      textAnchor="middle" fontFamily="sans-serif"
-                      fontSize={10} fill="#475569" fontWeight="bold" pointerEvents="none">
-                      {w.label}
-                    </text>
-                  );
-                })()}
-              </g>
-            );
-          })
-        )}
-
-        {/* ═══ CURRENT FLOW ═══ */}
-        {solver && solver.ok && view.mode === 'physical' && (
-          <CurrentFlow
-            graph={graph}
-            solver={solver}
-            mode={view.mode}
-            componentMap={componentMap}
-          />
-        )}
-
-        {/* live wire preview — follows the actual mouse trail */}
-        {wirePreview && tool === 'wire' && (
-          <g pointerEvents="none">
-            <path
-              d={wirePreview.d}
-              stroke="#2563eb"
-              strokeWidth={view.mode === 'physical' ? 4 : 2.5}
-              strokeOpacity={0.85}
-              strokeDasharray="7 5"
-              strokeLinecap="round"
-              fill="none"
-            />
-            {/* magnetic snap indicator: pulsing ring around the target post */}
-            {wirePreview.snap && (
-              <>
-                <circle
-                  cx={wirePreview.snap.x}
-                  cy={wirePreview.snap.y}
-                  r={13}
-                  fill="rgba(22,163,74,0.15)"
-                  stroke="#16a34a"
-                  strokeWidth={2.5}
-                >
-                  <animate attributeName="r" values="10;14;10" dur="0.9s" repeatCount="indefinite" />
-                </circle>
-                <circle cx={wirePreview.snap.x} cy={wirePreview.snap.y} r={4} fill="#16a34a" />
-              </>
-            )}
-          </g>
         )}
 
         {/* ═══ COMPONENTS ═══ */}
@@ -702,6 +643,91 @@ export function Editor() {
             </g>
           );
         })}
+
+        {/* ═══ PHYSICAL WIRES (above components, like real hook-up leads) ═══ */}
+        {view.mode === 'physical' && graph.wires.map((w) => {
+          const fc = componentMap.get(w.from.componentId);
+          const tc = componentMap.get(w.to.componentId);
+          if (!fc || !tc) return null;
+          // 仪表端点调整到底部接线柱位置
+          const fromOverride = meterPhysicalEndpoint(fc, w.from.pin);
+          const toOverride = meterPhysicalEndpoint(tc, w.to.pin);
+          const a = fromOverride ?? pinWorld(fc, w.from.pin);
+          const b = toOverride ?? pinWorld(tc, w.to.pin);
+          const selected =
+            selectedIds.includes(w.id) ||
+            selectedIds.includes(w.from.componentId) ||
+            selectedIds.includes(w.to.componentId);
+          // Freehand-drawn wires keep the user's routing (warped to follow
+          // moved components); wires without a trail use the default drape.
+          const d = w.path && w.path.length >= 3
+            ? smoothTrailPath(warpTrail(w.path as Pt[], a, b))
+            : physicalWirePath(a, b);
+          return (
+            <g key={w.id}>
+              <>
+                <path d={d} fill="none" stroke={selected ? '#2563eb' : '#0f172a'} strokeWidth={selected ? 7 : 6} strokeLinecap="round" />
+                <path d={d} fill="none" stroke="#e2e8f0" strokeWidth={3.5} strokeLinecap="round" />
+              </>
+              <path d={d} fill="none" stroke="transparent" strokeWidth={12} data-wire={w.id} style={{ cursor: 'pointer', pointerEvents: 'stroke' }} />
+              {/* wire label at midpoint of actual bezier path */}
+              {w.label && (() => {
+                const mid = w.path && w.path.length >= 3
+                  ? warpTrail(w.path as Pt[], a, b)[Math.floor((w.path.length - 1) / 2)]
+                  : physicalWireMidpoint(a, b);
+                const midPt = Array.isArray(mid) ? { x: mid[0], y: mid[1] } : mid;
+                return (
+                  <text x={midPt.x} y={midPt.y - 2}
+                    textAnchor="middle" fontFamily="sans-serif"
+                    fontSize={10} fill="#475569" fontWeight="bold" pointerEvents="none">
+                    {w.label}
+                  </text>
+                );
+              })()}
+            </g>
+          );
+        })}
+
+        {/* ═══ CURRENT FLOW ═══ */}
+        {solver && solver.ok && view.mode === 'physical' && (
+          <CurrentFlow
+            graph={graph}
+            solver={solver}
+            mode={view.mode}
+            componentMap={componentMap}
+          />
+        )}
+
+        {/* live wire preview — follows the actual mouse trail */}
+        {wirePreview && tool === 'wire' && (
+          <g pointerEvents="none">
+            <path
+              d={wirePreview.d}
+              stroke="#2563eb"
+              strokeWidth={view.mode === 'physical' ? 4 : 2.5}
+              strokeOpacity={0.85}
+              strokeDasharray="7 5"
+              strokeLinecap="round"
+              fill="none"
+            />
+            {/* magnetic snap indicator: pulsing ring around the target post */}
+            {wirePreview.snap && (
+              <>
+                <circle
+                  cx={wirePreview.snap.x}
+                  cy={wirePreview.snap.y}
+                  r={13}
+                  fill="rgba(22,163,74,0.15)"
+                  stroke="#16a34a"
+                  strokeWidth={2.5}
+                >
+                  <animate attributeName="r" values="10;14;10" dur="0.9s" repeatCount="indefinite" />
+                </circle>
+                <circle cx={wirePreview.snap.x} cy={wirePreview.snap.y} r={4} fill="#16a34a" />
+              </>
+            )}
+          </g>
+        )}
 
         {/* marquee */}
         {marquee && (

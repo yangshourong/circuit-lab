@@ -236,6 +236,15 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
   const isMeter = comp.type === 'ammeter' || comp.type === 'voltmeter' || comp.type === 'galvanometer';
   const showReadings = useStore((s) => s.showReadings);
 
+  // Meter-specific body dimensions (taller body, same width)
+  // Non-meter: body spans y -35..+35 (height 70)
+  // Meter: body spans y -70..+70 (height 140)
+  const meterBodyTop = isMeter ? -70 : -35;
+  const meterBodyH = isMeter ? 140 : 70;
+  // Selection / fault box: 7px padding around body
+  const boxY = meterBodyTop - 7;
+  const boxH = meterBodyH + 14;
+
   const labelFontSize = largeScreen ? 22 : 13;
 
   // 计算灯泡功率比（用于亮度）
@@ -255,9 +264,9 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
       {selected && (
         <rect
           x={-66}
-          y={-42}
+          y={boxY}
           width={132}
-          height={84}
+          height={boxH}
           fill="none"
           stroke="#2563eb"
           strokeWidth={2}
@@ -268,7 +277,7 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
       )}
 
       {/* body art */}
-      <svg x={-60} y={-35} width={120} height={70} viewBox="0 0 120 70" overflow="visible">
+      <svg x={-60} y={meterBodyTop} width={120} height={meterBodyH} viewBox={isMeter ? "0 0 120 140" : "0 0 120 70"} overflow="visible">
         <defs>
           <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#e2e8f0"/>
@@ -367,15 +376,15 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
         <g pointerEvents="none">
           <rect
             x={-66}
-            y={-42}
+            y={boxY}
             width={132}
-            height={84}
+            height={boxH}
             fill="none"
             stroke="#dc2626"
             strokeWidth={2.5}
             rx={6}
           />
-          <text x={0} y={-48} textAnchor="middle" fontSize={12} fontWeight="bold" fill="#dc2626">
+          <text x={0} y={boxY - 6} textAnchor="middle" fontSize={12} fontWeight="bold" fill="#dc2626">
             {fault === 'open' ? '断路' : '短路'}
           </text>
         </g>
@@ -395,7 +404,7 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
       {labelText && mode !== 'schematic' && showReadings && (
         <text
           x={0}
-          y={52}
+          y={isMeter ? 87 : 52}
           textAnchor="middle"
           fontFamily="ui-monospace, monospace"
           fontSize={labelFontSize}
@@ -412,12 +421,13 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
         const fs = labelFontSize - 1;
         const gap = fs + 3;
         const chars = comp.label.split('');
-        const isVert = rot === 90 || rot === 270;
+          const isVert = rot === 90 || rot === 270;
 
         if (isVert) {
           // 90°/270°：竖排。父级 rotate(90°) 时，(x,y)→(-y,x)
           // 要显示在右侧 (65, i*gap)，需放置于 local (i*gap, -65)
           // 每个字单独反旋转保持正向可读
+          // 宽度不变，水平偏移无需调整
           const shift = rot === 90 ? gap : -gap;
           return (
             <g pointerEvents="none">
@@ -434,8 +444,8 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
             </g>
           );
         } else {
-          // 0°: 上方 (0, -42)；180°: 下方 (0, 42)
-          const ty = rot === 0 ? -42 : 42;
+          // 0°: 上方 (0, boxY)；180°: 下方 (0, -(boxY))
+          const ty = rot === 0 ? boxY : -boxY;
           return (
             <text x={0} y={ty}
               transform={`rotate(${-rot})`}
@@ -450,43 +460,91 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
       {/* pin hit areas + mode-specific terminals */}
       {hasPins &&
         def.pins.map((p) => {
-          // 引脚已在旋转的外层 <g> 内，位置无需重复计算旋转
           const l = comp.pinPositions?.[p.id] ?? { x: p.id === 'a' ? -PIN_OFFSET : PIN_OFFSET, y: 0 };
           const armed = !!wireStart && wireStart.componentId === comp.id && wireStart.pin === p.id;
+
           return (
             <g key={p.id}>
-              {/* wiring highlight ring: green when this pin is the armed start,
-                  blue as a general connectable target */}
-              {wiring && (
-                <circle
-                  cx={l.x}
-                  cy={l.y}
-                  r={armed ? 13 : 11}
-                  fill={armed ? 'rgba(22,163,74,0.22)' : 'rgba(37,99,235,0.16)'}
-                  stroke={armed ? '#16a34a' : '#2563eb'}
-                  strokeWidth={armed ? 2.5 : 1.5}
-                  pointerEvents="none"
-                />
-              )}
-              <circle
-                cx={l.x}
-                cy={l.y}
-                r={wiring ? 11 : 9}
-                fill="transparent"
-                data-comp={comp.id}
-                data-pin={p.id}
-                style={{ cursor: wiring ? 'crosshair' : 'move' }}
-              />
-              {mode === 'physical' ? (
-                // 接线柱 (terminal post): red for pin 'a', black for 'b'
-                <g transform={`translate(${l.x} ${l.y})`} pointerEvents="none">
-                  <circle r={9} fill={comp.flipPolarity ? (p.id === 'a' ? '#0f172a' : '#dc2626') : (p.id === 'a' ? '#dc2626' : '#0f172a')} stroke="#334155" strokeWidth={1.5} />
-                  <circle r={4.2} fill="#0b1220" />
-                  <circle r={1.5} fill="#1e293b" />
-                </g>
+              {mode === 'physical' && !isMeter ? (
+                /* ── 普通组件：接线柱在侧面电气引脚位置 ── */
+                <>
+                  {wiring && (
+                    <circle cx={l.x} cy={l.y} r={armed ? 13 : 11}
+                      fill={armed ? 'rgba(22,163,74,0.22)' : 'rgba(37,99,235,0.16)'}
+                      stroke={armed ? '#16a34a' : '#2563eb'}
+                      strokeWidth={armed ? 2.5 : 1.5} pointerEvents="none" />
+                  )}
+                  <circle cx={l.x} cy={l.y} r={wiring ? 11 : 9}
+                    fill="transparent" data-comp={comp.id} data-pin={p.id}
+                    style={{ cursor: wiring ? 'crosshair' : 'move' }} />
+                  <g transform={`translate(${l.x} ${l.y})`} pointerEvents="none">
+                    <circle r={9} fill={comp.flipPolarity ? (p.id === 'a' ? '#0f172a' : '#dc2626') : (p.id === 'a' ? '#dc2626' : '#0f172a')} stroke="#334155" strokeWidth={1.5} />
+                    <circle r={4.2} fill="#0b1220" />
+                    <circle r={1.5} fill="#1e293b" />
+                  </g>
+                </>
+              ) : mode === 'physical' && isMeter ? (
+                /* ── 仪表：底部 3 个接线柱均可点击 ──
+                    pin 'b' (−) → 左侧黑色接线柱
+                    pin 'a' (+) → 中间（低量程）+ 右侧（高量程）两个红色接线柱
+                    无交叉走线：真实仪表内部连线不可见 */
+                <>
+                  {p.id === 'b' ? (
+                    /* ─ 左侧负接线柱 ─ */
+                    <>
+                      {wiring && (
+                        <circle cx={-33} cy={44} r={armed ? 13 : 11}
+                          fill={armed ? 'rgba(22,163,74,0.22)' : 'rgba(37,99,235,0.16)'}
+                          stroke={armed ? '#16a34a' : '#2563eb'}
+                          strokeWidth={armed ? 2.5 : 1.5} pointerEvents="none" />
+                      )}
+                      <circle cx={-33} cy={44} r={wiring ? 11 : 9}
+                        fill="transparent" data-comp={comp.id} data-pin={p.id}
+                        style={{ cursor: wiring ? 'crosshair' : 'move' }} />
+                    </>
+                  ) : (
+                    /* ─ 两个正接线柱（中间低量程 + 右侧高量程），都映射到 pin 'a' ─ */
+                    <>
+                      {/* 中间正接线柱（低量程） */}
+                      {wiring && (
+                        <circle cx={-5} cy={44} r={armed ? 13 : 11}
+                          fill={armed ? 'rgba(22,163,74,0.22)' : 'rgba(37,99,235,0.16)'}
+                          stroke={armed ? '#16a34a' : '#2563eb'}
+                          strokeWidth={armed ? 2.5 : 1.5} pointerEvents="none" />
+                      )}
+                      <circle cx={-5} cy={44} r={wiring ? 11 : 9}
+                        fill="transparent" data-comp={comp.id} data-pin={p.id}
+                        data-range="low"
+                        style={{ cursor: wiring ? 'crosshair' : 'move' }} />
+
+                      {/* 右侧正接线柱（高量程） */}
+                      {wiring && (
+                        <circle cx={23} cy={44} r={armed ? 13 : 11}
+                          fill={armed ? 'rgba(22,163,74,0.22)' : 'rgba(37,99,235,0.16)'}
+                          stroke={armed ? '#16a34a' : '#2563eb'}
+                          strokeWidth={armed ? 2.5 : 1.5} pointerEvents="none" />
+                      )}
+                      <circle cx={23} cy={44} r={wiring ? 11 : 9}
+                        fill="transparent" data-comp={comp.id} data-pin={p.id}
+                        data-range="high"
+                        style={{ cursor: wiring ? 'crosshair' : 'move' }} />
+                    </>
+                  )}
+                </>
               ) : (
-                // schematic connection node
-                <circle cx={l.x} cy={l.y} r={3} fill="#1e293b" pointerEvents="none" />
+                /* ── 电路图模式：标准连接节点 ── */
+                <>
+                  {wiring && (
+                    <circle cx={l.x} cy={l.y} r={armed ? 13 : 11}
+                      fill={armed ? 'rgba(22,163,74,0.22)' : 'rgba(37,99,235,0.16)'}
+                      stroke={armed ? '#16a34a' : '#2563eb'}
+                      strokeWidth={armed ? 2.5 : 1.5} pointerEvents="none" />
+                  )}
+                  <circle cx={l.x} cy={l.y} r={wiring ? 11 : 9}
+                    fill="transparent" data-comp={comp.id} data-pin={p.id}
+                    style={{ cursor: wiring ? 'crosshair' : 'move' }} />
+                  <circle cx={l.x} cy={l.y} r={3} fill="#1e293b" pointerEvents="none" />
+                </>
               )}
             </g>
           );

@@ -25,6 +25,48 @@ export function pinWorld(comp: PlacedComponent, pinId: string): { x: number; y: 
   return { x: comp.x + l.x, y: comp.y + l.y };
 }
 
+/** 仪表类型判断 */
+function isMeterType(type: string): boolean {
+  return type === 'ammeter' || type === 'voltmeter' || type === 'galvanometer';
+}
+
+/**
+ * 仪表在物理模式下的底部接线柱本地坐标。
+ * 三种接线柱：
+ *   − (pin 'b')  → 左侧 (−33, 44)
+ *   低量程 (+)    → 中间 (−5, 44)
+ *   高量程 (+)    → 右侧 (23, 44)
+ * pin 'a' 的位置随当前量程选择：低量程→中间，高量程→右侧。
+ */
+function meterTerminalLocal(comp: PlacedComponent, pinId: string): { x: number; y: number } {
+  if (pinId === 'b') return { x: -33, y: 44 };
+
+  // pin 'a' (+)：根据当前量程选择中间或右侧接线柱
+  const range = String(comp.params?.range ?? '');
+  // 低量程值：ammeter→0.6A, voltmeter→3V, galvanometer→0.5A
+  const isLowRange = range === '0.6A' || range === '3V' || range === '0.5A';
+  return { x: isLowRange ? -5 : 23, y: 44 };
+}
+
+/**
+ * 仪表在物理模式下的底部接线柱世界坐标。
+ * 考虑组件旋转变换。非仪表返回 null。
+ */
+export function meterPhysicalEndpoint(
+  comp: PlacedComponent,
+  pinId: string,
+): { x: number; y: number } | null {
+  if (!isMeterType(comp.type)) return null;
+  const local = meterTerminalLocal(comp, pinId);
+  const rad = ((comp.rotation ?? 0) * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  return {
+    x: comp.x + local.x * cos - local.y * sin,
+    y: comp.y + local.x * sin + local.y * cos,
+  };
+}
+
 /**
  * Physical-mode wire path — simulates a real hook-up lead draped between
  * two terminal posts.

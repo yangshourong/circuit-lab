@@ -1,5 +1,5 @@
 import type { CircuitGraph, SolverResult, PlacedComponent, Wire } from '../types';
-import { pinWorld, physicalWirePath, smoothTrailPath, warpTrail } from '../geometry';
+import { pinWorld, meterPhysicalEndpoint, physicalWirePath, smoothTrailPath, warpTrail } from '../geometry';
 import type { Pt } from '../geometry';
 import { getComponentDef } from '@circuit/core';
 
@@ -124,8 +124,11 @@ export function CurrentFlow({ graph, solver, mode, componentMap, schemWirePaths 
     const tc = componentMap.get(w.to.componentId);
     if (!fc || !tc) continue;
 
-    const a = pinWorld(fc, w.from.pin);
-    const b = pinWorld(tc, w.to.pin);
+    const aRaw = pinWorld(fc, w.from.pin);
+    const bRaw = pinWorld(tc, w.to.pin);
+    // 仪表端点调整到底部接线柱位置
+    const a = meterPhysicalEndpoint(fc, w.from.pin) ?? aRaw;
+    const b = meterPhysicalEndpoint(tc, w.to.pin) ?? bRaw;
 
     // 估算电流
     const iFrom = solver.readings[w.from.componentId]?.current;

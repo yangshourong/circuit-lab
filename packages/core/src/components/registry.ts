@@ -22,9 +22,9 @@ export const REGISTRY: ComponentDef[] = [
     pins: TWO_PIN,
     params: [
       { key: 'voltage', label: '电动势', type: 'number', unit: 'V', min: 0, max: 100, step: 0.1, default: 3 },
-      { key: 'internalResistance', label: '内阻', type: 'number', unit: 'Ω', min: 0, max: 100, step: 0.1, default: 0 },
+      { key: 'internalResistance', label: '内阻', type: 'number', unit: 'Ω', min: 0, max: 100, step: 0.1, default: 0.5 },
     ],
-    defaults: { voltage: 3, internalResistance: 0 },
+    defaults: { voltage: 3, internalResistance: 0.5 },
     mainPins: ['a', 'b'],
     stamp(b, comp) {
       const a = b.node('a');
@@ -34,7 +34,7 @@ export const REGISTRY: ComponentDef[] = [
       const m = b.addNode();
       const k = b.addBranch();
       b.voltageSource(a, m, E, k);
-      b.conductance(m, bb, 1 / Math.max(r, 1e-9));
+      b.conductance(m, bb, 1 / Math.max(r, 0.01));
       b.measure(() => {
         // I[k] is current INTO the + terminal; delivered current = -I[k].
         const I = -b.I(k);
