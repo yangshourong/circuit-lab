@@ -250,35 +250,17 @@ export const COMPONENT_ART: Record<string, ComponentArt> = {
   // ═════════════════════════════════════════════════════════════
   lamp: {
     physical: `
-<!-- 引脚到接线柱的导线 -->
-<line x1="8" y1="35" x2="27" y2="51" stroke="#1e293b" stroke-width="1.5" stroke-linecap="round"/>
-<line x1="112" y1="35" x2="93" y2="51" stroke="#1e293b" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="8" y1="35" x2="25" y2="35" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
+<line x1="95" y1="35" x2="112" y2="35" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
 <!-- 底座 -->
-<rect x="18" y="53" width="84" height="12" rx="3" fill="url(#plastic)" stroke="#64748b" stroke-width="1" filter="url(#shadowSm)"/>
-<rect x="19" y="54" width="82" height="3" rx="1.5" fill="white" opacity="0.08"/>
-<!-- 左接线柱 -->
-<rect x="22" y="47" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
-<rect x="23" y="47" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
-<!-- 右接线柱 -->
-<rect x="88" y="47" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
-<rect x="89" y="47" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
-<!-- 灯座承托台 -->
-<rect x="44" y="41" width="32" height="14" rx="5" fill="url(#plastic)" stroke="#64748b" stroke-width="0.8"/>
-<rect x="45" y="42" width="30" height="3" rx="1.5" fill="white" opacity="0.08"/>
-<!-- 螺口灯头 -->
-<rect x="48" y="33" width="24" height="10" rx="2" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.5"/>
-<line x1="48" y1="36" x2="72" y2="36" stroke="#64748b" stroke-width="0.4" opacity="0.5"/>
-<line x1="48" y1="38.5" x2="72" y2="38.5" stroke="#64748b" stroke-width="0.4" opacity="0.5"/>
-<line x1="48" y1="41" x2="72" y2="41" stroke="#64748b" stroke-width="0.4" opacity="0.5"/>
-<!-- 玻璃泡 -->
-<ellipse cx="60" cy="18" rx="18" ry="17" fill="url(#glass)" stroke="#94a3b8" stroke-width="0.8"/>
-<!-- 灯丝支架 -->
-<line x1="56" y1="33" x2="56" y2="20" stroke="#b45309" stroke-width="0.6"/>
-<line x1="64" y1="33" x2="64" y2="20" stroke="#b45309" stroke-width="0.6"/>
-<!-- 灯丝（U形） -->
-<path d="M56 20 Q60 10 64 20" fill="none" stroke="#b45309" stroke-width="0.8"/>
-<!-- 玻璃高光 -->
-<ellipse cx="53" cy="13" rx="6" ry="4" fill="white" opacity="0.35"/>
+<rect x="22" y="42" width="76" height="14" rx="3" fill="url(#plastic)" stroke="#94a3b8" stroke-width="1" filter="url(#shadowSm)"/>
+<!-- 灯泡 -->
+<ellipse cx="60" cy="28" rx="20" ry="22" fill="url(#glass)" stroke="#94a3b8" stroke-width="1"/>
+<!-- 灯丝 -->
+<path d="M52 35 L56 22 L60 35 L64 22 L68 35" fill="none" stroke="#b45309" stroke-width="0.8"/>
+<!-- 正负极标识 -->
+<text x="8" y="30" font-family="sans-serif" font-size="8" fill="#dc2626" font-weight="bold">+</text>
+<text x="106" y="30" font-family="sans-serif" font-size="8" fill="#0f172a" font-weight="bold">−</text>
 `.trim(),
     schematic: `
 <line x1="8" y1="35" x2="35" y2="35" stroke="#334155" stroke-width="2.5" stroke-linecap="round"/>
