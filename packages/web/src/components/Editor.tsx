@@ -10,11 +10,11 @@ import {
   physicalWirePath,
   physicalWireMidpoint,
   defaultWireControlPoints,
+  buildWirePoints,
   schematicWirePath,
   simplifyTrail,
   smoothTrailPath,
   warpTrail,
-  warpControlPoints,
   type Pt,
 } from '../geometry';
 import { getComponentDef } from '@circuit/core';
@@ -684,10 +684,10 @@ export function Editor() {
             selectedIds.includes(w.from.componentId) ||
             selectedIds.includes(w.to.componentId);
 
-          // Use control points if available, otherwise fall back to trail or default drape
+          // controlPoints stores only interior mid-points; exit points are dynamic
+          const hasCP = w.controlPoints && w.controlPoints.length > 0;
           let d: string;
-          const hasControlPoints = w.controlPoints && w.controlPoints.length >= 2;
-          if (hasControlPoints) {
+          if (hasCP) {
             d = physicalWirePath(a, b, w.controlPoints as Pt[]);
           } else if (w.path && w.path.length >= 3) {
             d = smoothTrailPath(warpTrail(w.path as Pt[], a, b));
@@ -695,10 +695,8 @@ export function Editor() {
             d = physicalWirePath(a, b);
           }
 
-          // Compute warped control points for handle rendering
-          const displayCP = hasControlPoints
-            ? warpControlPoints(w.controlPoints as Array<[number, number]>, a, b)
-            : null;
+          // Compute display control points for handle rendering (interior only)
+          const midPts = hasCP ? (w.controlPoints as Pt[]) : defaultWireControlPoints(a, b);
 
           return (
             <g key={w.id}>
@@ -707,31 +705,23 @@ export function Editor() {
                 <path d={d} fill="none" stroke="#e2e8f0" strokeWidth={3.5} strokeLinecap="round" />
               </>
               <path d={d} fill="none" stroke="transparent" strokeWidth={12} data-wire={w.id} style={{ cursor: 'pointer', pointerEvents: 'stroke' }} />
-              {/* Control-point handles for selected wire (draggable) */}
-              {selected && displayCP && displayCP.map((cp, i) => {
-                // Skip endpoints (index 0 and last) — they're locked to terminals
-                if (i === 0 || i === displayCP.length - 1) return null;
-                return (
-                  <circle
-                    key={`cp-${w.id}-${i}`}
-                    cx={cp[0]}
-                    cy={cp[1]}
-                    r={6}
-                    fill="white"
-                    stroke="#2563eb"
-                    strokeWidth={2}
-                    style={{ cursor: 'grab', pointerEvents: 'all' }}
-                    data-wire-cp={`${w.id}:${i}`}
-                  />
-                );
-              })}
-              {/* wire label at midpoint of actual bezier path */}
+              {/* Control-point handles for selected wire (draggable interior points) */}
+              {selected && midPts.map((cp, i) => (
+                <circle
+                  key={`cp-${w.id}-${i}`}
+                  cx={cp[0]}
+                  cy={cp[1]}
+                  r={6}
+                  fill="white"
+                  stroke="#2563eb"
+                  strokeWidth={2}
+                  style={{ cursor: 'grab', pointerEvents: 'all' }}
+                  data-wire-cp={`${w.id}:${i}`}
+                />
+              ))}
+              {/* wire label at midpoint of path */}
               {w.label && (() => {
-                const mid = hasControlPoints
-                  ? { x: displayCP![Math.floor(displayCP!.length / 2)][0], y: displayCP![Math.floor(displayCP!.length / 2)][1] }
-                  : w.path && w.path.length >= 3
-                  ? (() => { const m = warpTrail(w.path as Pt[], a, b)[Math.floor((w.path.length - 1) / 2)]; return Array.isArray(m) ? { x: m[0], y: m[1] } : physicalWireMidpoint(a, b); })()
-                  : physicalWireMidpoint(a, b);
+                const mid = physicalWireMidpoint(a, b, hasCP ? (w.controlPoints as Pt[]) : undefined);
                 return (
                   <text x={mid.x} y={mid.y - 2}
                     textAnchor="middle" fontFamily="sans-serif"

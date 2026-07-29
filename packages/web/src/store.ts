@@ -8,7 +8,7 @@ import {
   type SolverResult,
   type FaultState,
 } from '@circuit/core';
-import { defaultWireControlPoints, pinWorld, meterPhysicalEndpoint } from './geometry';
+import { defaultWireControlPoints, pinWorld, meterPhysicalEndpoint, warpMidPoints } from './geometry';
 import type { Breakpoint, Tool, ViewMode } from './types';
 
 export const GRID = 10;
@@ -251,7 +251,6 @@ export const useStore = create<StoreState>((set, get) => ({
     set((s) => {
       const wire = s.graph.wires.find((w) => w.id === wireId);
       if (!wire) return {};
-      // Ensure controlPoints array exists
       const cp = wire.controlPoints ? [...wire.controlPoints] : [];
       if (index < 0 || index >= cp.length) return {};
       cp[index] = [x, y];
@@ -261,14 +260,17 @@ export const useStore = create<StoreState>((set, get) => ({
           w.id === wireId ? { ...w, controlPoints: cp } : w
         ),
       };
-      return { graph, ...pushHistory(s) };
+      // Live update during drag — no pushHistory (history is recorded on gesture end)
+      return { graph };
     }),
 
   ensureWireControlPoints: (wireId) =>
     set((s) => {
       const wire = s.graph.wires.find((w) => w.id === wireId);
-      if (!wire || wire.controlPoints) return {};
-      // Generate default control points based on current endpoint positions
+      if (!wire) return {};
+      // If controlPoints exist and are the new 3-point format, nothing to do
+      if (wire.controlPoints && wire.controlPoints.length <= 3) return {};
+      // Generate default interior control points (3 mid-points)
       const fc = s.graph.components.find((c) => c.id === wire.from.componentId);
       const tc = s.graph.components.find((c) => c.id === wire.to.componentId);
       if (!fc || !tc) return {};
@@ -368,14 +370,33 @@ export const useStore = create<StoreState>((set, get) => ({
 
   beginGesture: () => set((s) => ({ _base: s.graph, gesturing: true })),
   setComponentPositionsLive: (positions) =>
-    set((s) => ({
-      graph: {
-        ...s.graph,
-        components: s.graph.components.map((c) =>
-          positions[c.id] ? { ...c, x: positions[c.id].x, y: positions[c.id].y } : c
-        ),
-      },
-    })),
+    set((s) => {
+      // Update component positions
+      const newComponents = s.graph.components.map((c) =>
+        positions[c.id] ? { ...c, x: positions[c.id].x, y: positions[c.id].y } : c
+      );
+      const newCompMap = new Map(newComponents.map((c) => [c.id, c]));
+      // Update wire control points to follow moved endpoints
+      const newWires = s.graph.wires.map((w) => {
+        if (!w.controlPoints || w.controlPoints.length === 0) return w;
+        const oldFc = s.graph.components.find((c) => c.id === w.from.componentId);
+        const oldTc = s.graph.components.find((c) => c.id === w.to.componentId);
+        const newFc = newCompMap.get(w.from.componentId);
+        const newTc = newCompMap.get(w.to.componentId);
+        if (!oldFc || !oldTc || !newFc || !newTc) return w;
+        // Only warp if at least one endpoint's component moved
+        if (!positions[w.from.componentId] && !positions[w.to.componentId]) return w;
+        const oldA = meterPhysicalEndpoint(oldFc, w.from.pin) ?? pinWorld(oldFc, w.from.pin);
+        const oldB = meterPhysicalEndpoint(oldTc, w.to.pin) ?? pinWorld(oldTc, w.to.pin);
+        const newA = meterPhysicalEndpoint(newFc, w.from.pin) ?? pinWorld(newFc, w.from.pin);
+        const newB = meterPhysicalEndpoint(newTc, w.to.pin) ?? pinWorld(newTc, w.to.pin);
+        const warped = warpMidPoints(w.controlPoints as Array<[number, number]>, oldA, oldB, newA, newB);
+        return { ...w, controlPoints: warped };
+      });
+      return {
+        graph: { ...s.graph, components: newComponents, wires: newWires },
+      };
+    }),
   endGesture: () =>
     set((s) => {
       if (!s._base || s._base === s.graph) return { _base: null, gesturing: false };

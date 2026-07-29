@@ -154,13 +154,10 @@ function terminalOutwardDir(
 }
 
 /**
- * Generate default control points for a physical-mode wire between two endpoints.
- * These control points create a natural catenary-like drape with smooth exits
- * from each terminal.
- *
- * The wire path is built as a sequence of key points:
- *   [a, exit_a, ...mid_points..., exit_b, b]
- * which are then smoothed via Catmull-Rom spline.
+ * Generate default *interior* control points for a physical-mode wire.
+ * Returns ONLY the 3 user-adjustable mid-points (q1, mid, q2).
+ * Endpoint and exit-point positions are recomputed dynamically from
+ * the current terminal positions, so they always track component moves.
  */
 export function defaultWireControlPoints(
   a: { x: number; y: number },
@@ -170,19 +167,18 @@ export function defaultWireControlPoints(
   const dy = b.y - a.y;
   const len = Math.hypot(dx, dy);
 
-  // Very short wires → just two endpoints
-  if (len < 30) return [[a.x, a.y], [b.x, b.y]];
+  // Very short wires → no interior points needed
+  if (len < 30) return [];
 
   // Unit vector along a→b
   const ux = dx / len;
   const uy = dy / len;
 
-  // Sag direction: prefer gravity (downward) for roughly horizontal wires,
-  // or sideways for vertical wires
+  // Sag direction: prefer gravity (downward) for horizontal wires
   let sx: number, sy: number;
   if (Math.abs(dx) >= Math.abs(dy)) {
     sx = 0;
-    sy = 1; // gravity down
+    sy = 1;
   } else {
     sy = 0;
     sx = Math.sign(dx) || 1;
@@ -190,109 +186,116 @@ export function defaultWireControlPoints(
   const sLen = Math.hypot(sx, sy);
   sx /= sLen; sy /= sLen;
 
-  // Exit length: how far the wire extends from the terminal before curving
   const exitLen = Math.min(len * 0.15, 20);
-  // Sag amount: natural droop proportional to wire length
   const sag = Math.min(Math.max(len * 0.2, 15), 60);
 
-  // Exit points: wire goes straight out from terminal, then curves
+  // Exit points (dynamic, not stored)
   const exitAx = a.x + ux * exitLen;
   const exitAy = a.y + uy * exitLen;
   const exitBx = b.x - ux * exitLen;
   const exitBy = b.y - uy * exitLen;
 
-  // Mid-point with sag: the wire droops between the two exit points
+  // Three user-adjustable interior points
   const midX = (exitAx + exitBx) / 2 + sx * sag;
   const midY = (exitAy + exitBy) / 2 + sy * sag;
-
-  // Two quarter-points for smoother catenary shape
   const q1x = exitAx + (midX - exitAx) * 0.5 + sx * sag * 0.15;
   const q1y = exitAy + (midY - exitAy) * 0.5 + sy * sag * 0.15;
   const q2x = exitBx + (midX - exitBx) * 0.5 + sx * sag * 0.15;
   const q2y = exitBy + (midY - exitBy) * 0.5 + sy * sag * 0.15;
 
   return [
-    [a.x, a.y],
-    [exitAx, exitAy],
     [q1x, q1y],
     [midX, midY],
     [q2x, q2y],
-    [exitBx, exitBy],
+  ];
+}
+
+/**
+ * Build the full point sequence for a wire path:
+ *   [a, ...interior_control_points..., b]
+ *
+ * No fixed exit segments — the wire flows freely from terminal to terminal,
+ * fully shaped by the user-adjustable interior control points.
+ */
+export function buildWirePoints(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  midPoints?: Array<[number, number]>,
+): Array<[number, number]> {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy);
+
+  if (len < 30) return [[a.x, a.y], [b.x, b.y]];
+
+  // Use stored mid-points, or generate defaults
+  const mids = midPoints && midPoints.length > 0
+    ? midPoints
+    : defaultWireControlPoints(a, b);
+
+  return [
+    [a.x, a.y],
+    ...mids,
     [b.x, b.y],
   ];
 }
 
 /**
- * Build an SVG path string from wire endpoints + optional control points.
- * Uses Catmull-Rom → cubic Bezier for smooth, natural curves.
+ * Build an SVG path string for a physical-mode wire.
  *
- * If controlPoints is provided, they are used (after warping to match current
- * endpoints); otherwise, default control points are generated automatically.
+ * @param a Start terminal position
+ * @param b End terminal position
+ * @param midPoints User-adjustable interior control points (3 points: q1, mid, q2)
+ *                  If omitted, defaults are generated automatically.
  */
 export function physicalWirePath(
   a: { x: number; y: number },
   b: { x: number; y: number },
-  controlPoints?: Array<[number, number]>,
+  midPoints?: Array<[number, number]>,
 ): string {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const len = Math.hypot(dx, dy);
-
-  if (len < 30) return `M ${a.x} ${a.y} L ${b.x} ${b.y}`;
-
-  const pts = controlPoints && controlPoints.length >= 2
-    ? warpControlPoints(controlPoints, a, b)
-    : defaultWireControlPoints(a, b);
-
+  const pts = buildWirePoints(a, b, midPoints);
   return smoothTrailPath(pts as Pt[]);
 }
 
 /**
- * Warp stored control points to follow (possibly moved) endpoints.
- * Similar to warpTrail but for control points: proportionally adjusts
- * all interior points when endpoints change.
- */
-export function warpControlPoints(
-  pts: Array<[number, number]>,
-  a: { x: number; y: number },
-  b: { x: number; y: number },
-): Array<[number, number]> {
-  if (pts.length < 2) return [[a.x, a.y], [b.x, b.y]];
-  const [ox0, oy0] = pts[0];
-  const [ox1, oy1] = pts[pts.length - 1];
-  const dAx = a.x - ox0;
-  const dAy = a.y - oy0;
-  const dBx = b.x - ox1;
-  const dBy = b.y - oy1;
-  if (dAx === 0 && dAy === 0 && dBx === 0 && dBy === 0) return pts;
-  const n = pts.length - 1;
-  return pts.map(([x, y], i) => {
-    const t = i / n;
-    return [x + dAx * (1 - t) + dBx * t, y + dAy * (1 - t) + dBy * t] as [number, number];
-  });
-}
-
-/**
  * Mid-point of a physical wire path (for label placement).
- * Evaluates the path at the geometric middle.
  */
 export function physicalWireMidpoint(
   a: { x: number; y: number },
   b: { x: number; y: number },
-  controlPoints?: Array<[number, number]>,
+  midPoints?: Array<[number, number]>,
 ): { x: number; y: number } {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const len = Math.hypot(dx, dy);
-  if (len < 30) return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-
-  const pts = controlPoints && controlPoints.length >= 2
-    ? warpControlPoints(controlPoints, a, b)
-    : defaultWireControlPoints(a, b);
-
-  // Return the middle control point (approximate midpoint)
+  const pts = buildWirePoints(a, b, midPoints);
+  if (pts.length === 0) return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
   const mid = pts[Math.floor(pts.length / 2)];
   return { x: mid[0], y: mid[1] };
+}
+
+/**
+ * Warp interior mid-points when endpoints move.
+ * Instead of a full linear warp (which causes stiffness), we compute
+ * the delta for each endpoint and apply a proportional blend.
+ * Interior points near the start follow start's movement more,
+ * and vice versa — this gives a more natural "cable pull" feel.
+ */
+export function warpMidPoints(
+  midPoints: Array<[number, number]>,
+  oldA: { x: number; y: number },
+  oldB: { x: number; y: number },
+  newA: { x: number; y: number },
+  newB: { x: number; y: number },
+): Array<[number, number]> {
+  if (midPoints.length === 0) return midPoints;
+  const dAx = newA.x - oldA.x;
+  const dAy = newA.y - oldA.y;
+  const dBx = newB.x - oldB.x;
+  const dBy = newB.y - oldB.y;
+  if (dAx === 0 && dAy === 0 && dBx === 0 && dBy === 0) return midPoints;
+  const n = midPoints.length + 1; // +1 because there are n+1 segments (including exit point gaps)
+  return midPoints.map(([x, y], i) => {
+    const t = (i + 1) / n; // 0 at a, 1 at b (shifted by 1 to skip exit-a zone)
+    return [x + dAx * (1 - t) + dBx * t, y + dAy * (1 - t) + dBy * t] as [number, number];
+  });
 }
 
 /**

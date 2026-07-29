@@ -1,5 +1,5 @@
 import type { CircuitGraph, SolverResult, PlacedComponent, Wire } from '../types';
-import { pinWorld, meterPhysicalEndpoint, physicalWirePath, smoothTrailPath, warpTrail, warpControlPoints } from '../geometry';
+import { pinWorld, meterPhysicalEndpoint, physicalWirePath, smoothTrailPath, warpTrail } from '../geometry';
 import type { Pt } from '../geometry';
 import { getComponentDef } from '@circuit/core';
 
@@ -153,9 +153,9 @@ export function CurrentFlow({ graph, solver, mode, componentMap, schemWirePaths 
       forward = inferDirectionFromNeighbors(w, graph, solver, componentMap, pinVoltages);
     } else forward = true;
 
-    // 路径 — support controlPoints
+    // 路径 — controlPoints stores only interior mid-points
     let d: string;
-    const hasCP = w.controlPoints && w.controlPoints.length >= 2;
+    const hasCP = w.controlPoints && w.controlPoints.length > 0;
     if (hasCP) {
       d = physicalWirePath(a, b, w.controlPoints as Array<[number, number]>);
     } else if (w.path && w.path.length >= 3) {
