@@ -22,9 +22,9 @@ export const REGISTRY: ComponentDef[] = [
     pins: TWO_PIN,
     params: [
       { key: 'voltage', label: '电动势', type: 'number', unit: 'V', min: 0, max: 100, step: 0.1, default: 3 },
-      { key: 'internalResistance', label: '内阻', type: 'number', unit: 'Ω', min: 0, max: 100, step: 0.1, default: 0.5 },
+      { key: 'internalResistance', label: '内阻', type: 'number', unit: 'Ω', min: 0, max: 100, step: 0.1, default: 0 },
     ],
-    defaults: { voltage: 3, internalResistance: 0.5 },
+    defaults: { voltage: 3, internalResistance: 0 },
     mainPins: ['a', 'b'],
     stamp(b, comp) {
       const a = b.node('a');

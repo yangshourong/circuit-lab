@@ -5,8 +5,57 @@ import { serializeExperiment, deserializeExperiment } from '@circuit/core';
 import { exportSvgToPng, downloadText, readFileAsText } from '../fileio';
 import { SponsorModal } from './SponsorModal';
 
+const GITHUB_URL = 'https://github.com/yangshourong/circuit-lab';
+const WECHAT_ID = '147535';
+const UPDATES: { date: string; msg: string }[] = [
+  { date: '2026-07-29', msg: '拟真化：电阻/电阻箱/电源/保险丝/LED 拟真化，删除电动机/电铃/接线柱' },
+  { date: '2026-07-29', msg: '拟真化：滑动变阻器参考实物图重新设计' },
+  { date: '2026-07-29', msg: '连线自然化：多段贝塞尔+中间控制点，支持拖拽调整导线走向' },
+];
+
+function AboutModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card about-card" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <span>关于我</span>
+          <button type="button" className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="about-body">
+          <div className="about-top-row">
+            <div className="about-qr-col">
+              <img className="about-qr" src="/wechat-qr.png" alt="微信二维码" />
+              <span className="about-wechat-label">微信扫码添加作者</span>
+              <span className="about-wechat-id">微信号：{WECHAT_ID}</span>
+            </div>
+            <div className="about-info-col">
+              <div className="about-section">
+                <h4>项目地址</h4>
+                <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">{GITHUB_URL.replace('https://', '')}</a>
+              </div>
+              <div className="about-section">
+                <h4>最近更新</h4>
+                <ul className="about-updates">
+                  {UPDATES.map((u, i) => (
+                    <li key={i}>
+                      <span className="update-date">{u.date}</span>
+                      <span className="update-msg">{u.msg}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+          <p className="about-hint">欢迎通过微信联系作者，提出您的意见和建议！</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Toolbar() {
   const [showSponsor, setShowSponsor] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const view = useStore((s) => s.view);
   const largeScreen = useStore((s) => s.largeScreen);
   const canUndo = useStore((s) => s.past.length > 0);
@@ -69,7 +118,7 @@ export function Toolbar() {
 
   return (
     <div className="toolbar">
-      <span className="brand">智能电路实验室</span>
+      <span className="brand">中学物理电路仿真实验室</span>
       <div className="tb-group seg">
         <button
           type="button"
@@ -166,12 +215,18 @@ export function Toolbar() {
         </button>
         <input ref={fileRef} type="file" accept=".json,application/json" hidden onChange={onFile} />
       </div>
-      <div className="tb-group nav-group">
+      <div className="tb-group nav-group" style={{ marginLeft: 'auto' }}>
         <button type="button" className="btn sponsor-btn" onClick={() => setShowSponsor(true)} title="赞助支持项目">
           ❤️ 赞助
         </button>
       </div>
+      <div className="tb-group nav-group">
+        <button type="button" className="btn" onClick={() => setShowAbout(true)} title="关于作者">
+          关于我
+        </button>
+      </div>
       {showSponsor && <SponsorModal onClose={() => setShowSponsor(false)} />}
+      {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
     </div>
   );
 }

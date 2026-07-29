@@ -1,6 +1,6 @@
 {
-  "name": "智能电路实验室",
-  "short_name": "电路实验室",
+  "name": "中学物理电路仿真实验室",
+  "short_name": "电路仿真",
   "description": "中学物理虚拟电路实验平台",
   "start_url": ".",
   "scope": ".",

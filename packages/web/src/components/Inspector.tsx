@@ -1,7 +1,32 @@
+import { useCallback } from 'react';
 import { useStore } from '../store';
 import { getComponentDef } from '@circuit/core';
 import type { ParamSchema, FaultState } from '../types';
 import { fmt } from '../geometry';
+
+/** Clamp a numeric value to [min, max] with given step precision */
+function clampStep(v: number, min: number, max: number, step: number): number {
+  let val = Math.round((v - min) / step) * step + min;
+  // Fix floating-point rounding (e.g. 0.1 * 3 = 0.30000000000000004)
+  const decimals = String(step).includes('.') ? String(step).split('.')[1].length : 0;
+  if (decimals > 0) val = Number(val.toFixed(decimals));
+  return Math.min(max, Math.max(min, val));
+}
+
+/** Shared wheel handler: adjust value by ±step */
+function handleWheel<T extends HTMLInputElement>(
+  e: React.WheelEvent<T>,
+  current: number,
+  min: number,
+  max: number,
+  step: number,
+  onChange: (v: number) => void,
+) {
+  e.preventDefault();
+  const delta = e.deltaY < 0 ? step : -step;
+  const next = clampStep(current + delta, min, max, step);
+  if (next !== current) onChange(next);
+}
 
 export function Inspector() {
   const selectedIds = useStore((s) => s.selectedIds);
@@ -94,9 +119,48 @@ export function Inspector() {
                 step={schema.step ?? 1}
                 value={Number(comp.params[schema.key] ?? schema.default)}
                 onChange={(e) => onParam(schema, Number(e.target.value))}
+                onWheel={(e) => handleWheel(
+                  e,
+                  Number(comp.params[schema.key] ?? schema.default),
+                  schema.min ?? 0,
+                  schema.max ?? 100,
+                  schema.step ?? 1,
+                  (v) => onParam(schema, v),
+                )}
                 className="slider"
               />
-              <span className="num">{fmt(Number(comp.params[schema.key] ?? schema.default))}</span>
+              <input
+                type="number"
+                min={schema.min ?? 0}
+                max={schema.max ?? 100}
+                step={schema.step ?? 1}
+                value={Number(comp.params[schema.key] ?? schema.default)}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  if (!Number.isNaN(v)) onParam(schema, v);
+                }}
+                onBlur={(e) => {
+                  const v = clampStep(
+                    Number(e.target.value),
+                    schema.min ?? 0,
+                    schema.max ?? 100,
+                    schema.step ?? 1,
+                  );
+                  onParam(schema, v);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                }}
+                onWheel={(e) => handleWheel(
+                  e,
+                  Number(comp.params[schema.key] ?? schema.default),
+                  schema.min ?? 0,
+                  schema.max ?? 100,
+                  schema.step ?? 1,
+                  (v) => onParam(schema, v),
+                )}
+                className="num"
+              />
             </div>
           )}
           {schema.type === 'select' && (
@@ -152,9 +216,29 @@ export function Inspector() {
             step={15}
             value={comp.rotation ?? 0}
             onChange={(e) => setRotation(id, Number(e.target.value))}
+            onWheel={(e) => handleWheel(e, comp.rotation ?? 0, 0, 360, 15, (v) => setRotation(id, v))}
             className="slider"
           />
-          <span className="num">{comp.rotation ?? 0}°</span>
+          <input
+            type="number"
+            min={0}
+            max={360}
+            step={15}
+            value={comp.rotation ?? 0}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              if (!Number.isNaN(v)) setRotation(id, v);
+            }}
+            onBlur={(e) => {
+              const v = clampStep(Number(e.target.value), 0, 360, 15);
+              setRotation(id, v);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+            }}
+            onWheel={(e) => handleWheel(e, comp.rotation ?? 0, 0, 360, 15, (v) => setRotation(id, v))}
+            className="num"
+          />
         </div>
       </div>
 
