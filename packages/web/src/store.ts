@@ -8,6 +8,7 @@ import {
   type SolverResult,
   type FaultState,
 } from '@circuit/core';
+import { defaultWireControlPoints, pinWorld, meterPhysicalEndpoint } from './geometry';
 import type { Breakpoint, Tool, ViewMode } from './types';
 
 export const GRID = 10;
@@ -70,9 +71,11 @@ interface StoreState {
 
   // --- component / wire editing ---
   addComponent: (type: string, x: number, y: number) => void;
-  addWire: (from: PinRef, to: PinRef, path?: Array<[number, number]>) => void;
+  addWire: (from: PinRef, to: PinRef, path?: Array<[number, number]>, controlPoints?: Array<[number, number]>) => void;
   removeWire: (id: string) => void;
   removeSelected: () => void;
+  updateWireControlPoint: (wireId: string, index: number, x: number, y: number) => void;
+  ensureWireControlPoints: (wireId: string) => void;
   updateParam: (id: string, key: string, value: number | string | boolean) => void;
   setFault: (id: string, fault: FaultState) => void;
   setClosed: (id: string, closed: boolean) => void;
@@ -194,7 +197,7 @@ export const useStore = create<StoreState>((set, get) => ({
       return { graph, ...pushHistory(s), selectedIds: [comp.id] };
     }),
 
-  addWire: (from, to, path) =>
+  addWire: (from, to, path, controlPoints) =>
     set((s) => {
       if (from.componentId === to.componentId && from.pin === to.pin) return {};
       const exists = s.graph.wires.some(
@@ -210,9 +213,17 @@ export const useStore = create<StoreState>((set, get) => ({
       );
       if (exists) return {};
       const seq = s.graph.wires.length + 1;
+      const wire: Wire = {
+        id: newId('wire'),
+        from,
+        to,
+        label: `导线${seq}`,
+        ...(path && path.length >= 2 ? { path } : {}),
+        ...(controlPoints && controlPoints.length >= 2 ? { controlPoints } : {}),
+      };
       const graph: CircuitGraph = {
         ...s.graph,
-        wires: [...s.graph.wires, { id: newId('wire'), from, to, label: `导线${seq}`, ...(path && path.length >= 2 ? { path } : {}) }],
+        wires: [...s.graph.wires, wire],
       };
       return { graph, ...pushHistory(s), wireStart: null };
     }),
@@ -234,6 +245,45 @@ export const useStore = create<StoreState>((set, get) => ({
         ),
       };
       return { graph, ...pushHistory(s), selectedIds: [] };
+    }),
+
+  updateWireControlPoint: (wireId, index, x, y) =>
+    set((s) => {
+      const wire = s.graph.wires.find((w) => w.id === wireId);
+      if (!wire) return {};
+      // Ensure controlPoints array exists
+      const cp = wire.controlPoints ? [...wire.controlPoints] : [];
+      if (index < 0 || index >= cp.length) return {};
+      cp[index] = [x, y];
+      const graph: CircuitGraph = {
+        ...s.graph,
+        wires: s.graph.wires.map((w) =>
+          w.id === wireId ? { ...w, controlPoints: cp } : w
+        ),
+      };
+      return { graph, ...pushHistory(s) };
+    }),
+
+  ensureWireControlPoints: (wireId) =>
+    set((s) => {
+      const wire = s.graph.wires.find((w) => w.id === wireId);
+      if (!wire || wire.controlPoints) return {};
+      // Generate default control points based on current endpoint positions
+      const fc = s.graph.components.find((c) => c.id === wire.from.componentId);
+      const tc = s.graph.components.find((c) => c.id === wire.to.componentId);
+      if (!fc || !tc) return {};
+      const fromOverride = meterPhysicalEndpoint(fc, wire.from.pin);
+      const toOverride = meterPhysicalEndpoint(tc, wire.to.pin);
+      const a = fromOverride ?? pinWorld(fc, wire.from.pin);
+      const b = toOverride ?? pinWorld(tc, wire.to.pin);
+      const controlPoints = defaultWireControlPoints(a, b);
+      const graph: CircuitGraph = {
+        ...s.graph,
+        wires: s.graph.wires.map((w) =>
+          w.id === wireId ? { ...w, controlPoints } : w
+        ),
+      };
+      return { graph };
     }),
 
   updateParam: (id, key, value) =>

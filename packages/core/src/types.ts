@@ -65,6 +65,10 @@ export interface Wire {
   from: PinRef;
   to: PinRef;
   path?: Array<[number, number]>;
+  /** User-adjustable control points for physical-mode wire shaping.
+   *  Includes endpoints (index 0 = from, last = to) + interior points.
+   *  When absent, the default drape is computed automatically. */
+  controlPoints?: Array<[number, number]>;
   /** Display label (auto-generated sequence number). */
   label?: string;
 }

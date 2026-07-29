@@ -122,113 +122,177 @@ export function meterPhysicalEndpoint(
 }
 
 /**
- * Physical-mode wire path — simulates a real hook-up lead draped between
- * two terminal posts.
+ * Compute the outward direction from a terminal pin.
+ * For meter/lamp/switch types, uses the physical terminal local offset;
+ * for other types, uses the standard pin offset.
+ * Returns a unit vector pointing AWAY from the component center.
+ */
+function terminalOutwardDir(
+  comp: PlacedComponent,
+  pinId: string,
+): { x: number; y: number } {
+  let local = meterPhysicalEndpoint
+    ? (isMeterType(comp.type) || isLampType(comp.type) || isSwitchType(comp.type) || isMultiSwitchType(comp.type))
+      ? (() => {
+          // Recompute the local coords to get direction
+          if (isMeterType(comp.type)) return meterTerminalLocal(comp, pinId);
+          if (isLampType(comp.type) || isSwitchType(comp.type)) return lampTerminalLocal(comp, pinId);
+          if (isMultiSwitchType(comp.type)) return multiSwitchTerminalLocal(comp, pinId);
+          return null;
+        })()
+      : null
+    : null;
+  if (!local) {
+    // Standard 2-pin: compute local offset direction
+    const off = pinId === 'a' ? -PIN_OFFSET : PIN_OFFSET;
+    const rad = ((comp.rotation ?? 0) * Math.PI) / 180;
+    local = { x: off * Math.cos(rad), y: off * Math.sin(rad) };
+  }
+  const len = Math.hypot(local.x, local.y);
+  if (len < 0.001) return { x: 1, y: 0 };
+  return { x: local.x / len, y: local.y / len };
+}
+
+/**
+ * Generate default control points for a physical-mode wire between two endpoints.
+ * These control points create a natural catenary-like drape with smooth exits
+ * from each terminal.
  *
- * v2: Instead of a simple downward-sagging Bezier (which cuts through
- * components), the wire now:
- *   1. Exits each terminal at an outward angle (perpendicular offset)
- *   2. Curves gracefully toward the destination with catenary-like sag
- *   3. Sag direction alternates or picks the side with fewer obstacles
+ * The wire path is built as a sequence of key points:
+ *   [a, exit_a, ...mid_points..., exit_b, b]
+ * which are then smoothed via Catmull-Rom spline.
+ */
+export function defaultWireControlPoints(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+): Array<[number, number]> {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy);
+
+  // Very short wires → just two endpoints
+  if (len < 30) return [[a.x, a.y], [b.x, b.y]];
+
+  // Unit vector along a→b
+  const ux = dx / len;
+  const uy = dy / len;
+
+  // Sag direction: prefer gravity (downward) for roughly horizontal wires,
+  // or sideways for vertical wires
+  let sx: number, sy: number;
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    sx = 0;
+    sy = 1; // gravity down
+  } else {
+    sy = 0;
+    sx = Math.sign(dx) || 1;
+  }
+  const sLen = Math.hypot(sx, sy);
+  sx /= sLen; sy /= sLen;
+
+  // Exit length: how far the wire extends from the terminal before curving
+  const exitLen = Math.min(len * 0.15, 20);
+  // Sag amount: natural droop proportional to wire length
+  const sag = Math.min(Math.max(len * 0.2, 15), 60);
+
+  // Exit points: wire goes straight out from terminal, then curves
+  const exitAx = a.x + ux * exitLen;
+  const exitAy = a.y + uy * exitLen;
+  const exitBx = b.x - ux * exitLen;
+  const exitBy = b.y - uy * exitLen;
+
+  // Mid-point with sag: the wire droops between the two exit points
+  const midX = (exitAx + exitBx) / 2 + sx * sag;
+  const midY = (exitAy + exitBy) / 2 + sy * sag;
+
+  // Two quarter-points for smoother catenary shape
+  const q1x = exitAx + (midX - exitAx) * 0.5 + sx * sag * 0.15;
+  const q1y = exitAy + (midY - exitAy) * 0.5 + sy * sag * 0.15;
+  const q2x = exitBx + (midX - exitBx) * 0.5 + sx * sag * 0.15;
+  const q2y = exitBy + (midY - exitBy) * 0.5 + sy * sag * 0.15;
+
+  return [
+    [a.x, a.y],
+    [exitAx, exitAy],
+    [q1x, q1y],
+    [midX, midY],
+    [q2x, q2y],
+    [exitBx, exitBy],
+    [b.x, b.y],
+  ];
+}
+
+/**
+ * Build an SVG path string from wire endpoints + optional control points.
+ * Uses Catmull-Rom → cubic Bezier for smooth, natural curves.
  *
- * This produces the natural "looping" look of real lab wires that are
- * plugged into terminals and drape loosely between equipment.
+ * If controlPoints is provided, they are used (after warping to match current
+ * endpoints); otherwise, default control points are generated automatically.
  */
 export function physicalWirePath(
   a: { x: number; y: number },
-  b: { x: number; y: number }
+  b: { x: number; y: number },
+  controlPoints?: Array<[number, number]>,
 ): string {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const len = Math.hypot(dx, dy);
 
-  // Very short wires → straight line (no room to drape)
   if (len < 30) return `M ${a.x} ${a.y} L ${b.x} ${b.y}`;
 
-  // Unit vector along a→b, and perpendicular (rotated 90° CCW)
-  const ux = dx / len;
-  const uy = dy / len;
-  // Perpendicular: (-uy, ux) points to the LEFT of the directed line a→b
-  const px = -uy;
-  const py = ux;
+  const pts = controlPoints && controlPoints.length >= 2
+    ? warpControlPoints(controlPoints, a, b)
+    : defaultWireControlPoints(a, b);
 
-  // Sag amount scales with length but is capped for visual consistency
-  const sag = Math.min(Math.max(len * 0.18, 12), 50);
-
-  // Determine sag direction:
-  //   For roughly horizontal wires (|dy| < |dx|): sag downward (+y)
-  //   For roughly vertical wires: sag rightward (+x)
-  //   This matches gravity + natural draping convention
-  let sx: number, sy: number;
-  if (Math.abs(dx) >= Math.abs(dy)) {
-    // More horizontal than vertical → sag in y direction
-    sx = 0;
-    sy = Math.sign(dy) === 0 ? 1 : Math.sign(dy) * 0.6 + 0.4; // slight bias down
-    if (Math.abs(sy) < 0.3) sy = 1;
-  } else {
-    // More vertical → sag in x direction
-    sy = 0;
-    sx = Math.sign(dx) === 0 ? 1 : Math.sign(dx) * 0.6 + 0.4;
-    if (Math.abs(sx) < 0.3) sx = 1;
-  }
-  // Normalize sag direction
-  const sLen = Math.hypot(sx, sy);
-  sx /= sLen; sy /= sLen;
-
-  // Outward kick at each terminal: wire exits terminal at an angle
-  // before curving toward the other end. This creates the "plug" look.
-  const kick = Math.min(len * 0.12, 16); // initial outward offset distance
-
-  // Control points:
-  //   P0 = a (start terminal)
-  //   P1 = exit point from a, kicked outward + slightly toward b
-  //   P2 = approach point to b, kicked outward + slightly from a
-  //   P3 = b (end terminal)
-  const p1x = a.x + ux * kick + sx * sag * 0.5;
-  const p1y = a.y + uy * kick + sy * sag * 0.5;
-  const p2x = b.x - ux * kick + sx * sag * 0.5;
-  const p2y = b.y - uy * kick + sy * sag * 0.5;
-
-  return `M ${a.x} ${a.y} C ${p1x} ${p1y}, ${p2x} ${p2y}, ${b.x} ${b.y}`;
+  return smoothTrailPath(pts as Pt[]);
 }
 
 /**
- * Mid-point of a physical wire bezier path (for label placement).
- * Evaluates the cubic bezier at t = 0.5.
+ * Warp stored control points to follow (possibly moved) endpoints.
+ * Similar to warpTrail but for control points: proportionally adjusts
+ * all interior points when endpoints change.
+ */
+export function warpControlPoints(
+  pts: Array<[number, number]>,
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+): Array<[number, number]> {
+  if (pts.length < 2) return [[a.x, a.y], [b.x, b.y]];
+  const [ox0, oy0] = pts[0];
+  const [ox1, oy1] = pts[pts.length - 1];
+  const dAx = a.x - ox0;
+  const dAy = a.y - oy0;
+  const dBx = b.x - ox1;
+  const dBy = b.y - oy1;
+  if (dAx === 0 && dAy === 0 && dBx === 0 && dBy === 0) return pts;
+  const n = pts.length - 1;
+  return pts.map(([x, y], i) => {
+    const t = i / n;
+    return [x + dAx * (1 - t) + dBx * t, y + dAy * (1 - t) + dBy * t] as [number, number];
+  });
+}
+
+/**
+ * Mid-point of a physical wire path (for label placement).
+ * Evaluates the path at the geometric middle.
  */
 export function physicalWireMidpoint(
   a: { x: number; y: number },
-  b: { x: number; y: number }
+  b: { x: number; y: number },
+  controlPoints?: Array<[number, number]>,
 ): { x: number; y: number } {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const len = Math.hypot(dx, dy);
   if (len < 30) return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 
-  const ux = dx / len, uy = dy / len;
-  const sag = Math.min(Math.max(len * 0.18, 12), 50);
-  let sx: number, sy: number;
-  if (Math.abs(dx) >= Math.abs(dy)) {
-    sx = 0;
-    sy = dy === 0 ? 1 : Math.sign(dy) * 0.6 + 0.4;
-    if (Math.abs(sy) < 0.3) sy = 1;
-  } else {
-    sy = 0;
-    sx = dx === 0 ? 1 : Math.sign(dx) * 0.6 + 0.4;
-    if (Math.abs(sx) < 0.3) sx = 1;
-  }
-  const sLen = Math.hypot(sx, sy);
-  sx /= sLen; sy /= sLen;
-  const kick = Math.min(len * 0.12, 16);
-  const p1x = a.x + ux * kick + sx * sag * 0.5;
-  const p1y = a.y + uy * kick + sy * sag * 0.5;
-  const p2x = b.x - ux * kick + sx * sag * 0.5;
-  const p2y = b.y - uy * kick + sy * sag * 0.5;
-  // Cubic bezier at t = 0.5: mid = ⅛·P0 + ⅜·P1 + ⅜·P2 + ⅛·P3
-  return {
-    x: 0.125 * a.x + 0.375 * p1x + 0.375 * p2x + 0.125 * b.x,
-    y: 0.125 * a.y + 0.375 * p1y + 0.375 * p2y + 0.125 * b.y,
-  };
+  const pts = controlPoints && controlPoints.length >= 2
+    ? warpControlPoints(controlPoints, a, b)
+    : defaultWireControlPoints(a, b);
+
+  // Return the middle control point (approximate midpoint)
+  const mid = pts[Math.floor(pts.length / 2)];
+  return { x: mid[0], y: mid[1] };
 }
 
 /**

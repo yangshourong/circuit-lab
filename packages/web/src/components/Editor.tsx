@@ -9,10 +9,12 @@ import {
   meterPhysicalEndpoint,
   physicalWirePath,
   physicalWireMidpoint,
+  defaultWireControlPoints,
   schematicWirePath,
   simplifyTrail,
   smoothTrailPath,
   warpTrail,
+  warpControlPoints,
   type Pt,
 } from '../geometry';
 import { getComponentDef } from '@circuit/core';
@@ -25,7 +27,8 @@ type Gesture =
   | { type: 'pan'; startX: number; startY: number; panX: number; panY: number }
   | { type: 'wire'; from: PinRef; fromWorld: { x: number; y: number } }
   | { type: 'move'; startWorld: { x: number; y: number }; base: Map<string, { x: number; y: number }>; moved: boolean }
-  | { type: 'marquee'; startWorld: { x: number; y: number } };
+  | { type: 'marquee'; startWorld: { x: number; y: number } }
+  | { type: 'wireDrag'; wireId: string; cpIndex: number; startX: number; startY: number };
 
 /** Pin snap radius (screen px) while the wire tool is active — generous magnet. */
 const WIRE_SNAP_PX = 26;
@@ -145,10 +148,10 @@ export function Editor() {
   };
 
   /** Simplified, endpoint-anchored trail to persist onto a completed wire. */
-  const finalizeTrail = (start: PinRef, end: PinRef): Pt[] | undefined => {
+  const finalizeTrail = (start: PinRef, end: PinRef): { trail?: Pt[]; controlPoints?: Pt[] } => {
     const a = pinRefWorld(start);
     const b = pinRefWorld(end);
-    if (!a || !b) return undefined;
+    if (!a || !b) return {};
     const zoom = useStore.getState().view.zoom;
     const mid = simplifyTrail(trailRef.current, 5 / zoom);
     const pts: Pt[] = [[a.x, a.y], ...mid, [b.x, b.y]];
@@ -160,8 +163,10 @@ export function Editor() {
         Math.hypot(p[0] - b.x, p[1] - b.y) > 14
       );
     });
-    // A trail with no interior detail adds nothing — let the default curve run
-    return cleaned.length > 2 ? cleaned : undefined;
+    const trail = cleaned.length > 2 ? cleaned : undefined;
+    // Always generate default control points for the new wire
+    const controlPoints = defaultWireControlPoints(a, b) as Pt[];
+    return { trail, controlPoints };
   };
 
   const resetWireRouting = () => {
@@ -402,7 +407,8 @@ export function Editor() {
         const start = st.wireStart;
         // Second click of a click-to-click connection
         if (start && !(start.componentId === hitPin.componentId && start.pin === hitPin.pin)) {
-          st.addWire(start, hitPin, finalizeTrail(start, hitPin)); // clears wireStart
+          const ft = finalizeTrail(start, hitPin);
+          st.addWire(start, hitPin, ft.trail, ft.controlPoints); // clears wireStart
           resetWireRouting();
           return;
         }
@@ -422,12 +428,25 @@ export function Editor() {
     }
 
     // ================= SELECT TOOL =================
+    // Control-point drag on a selected wire
+    const cpEl = target.closest('[data-wire-cp]');
+    if (cpEl && st.tool === 'select') {
+      const wireId = cpEl.getAttribute('data-wire-cp')!.split(':')[0];
+      const cpIndex = parseInt(cpEl.getAttribute('data-wire-cp')!.split(':')[1], 10);
+      gesture.current = { type: 'wireDrag', wireId, cpIndex, startX: world.x, startY: world.y };
+      st.beginGesture();
+      (e.currentTarget as Element).setPointerCapture(e.pointerId);
+      return;
+    }
+
     // wire hit -> select the wire (delete via Del / delete button)
     const wireEl = target.closest('[data-wire]');
     if (wireEl) {
       const wid = wireEl.getAttribute('data-wire')!;
       if (e.shiftKey) st.toggleSelect(wid);
       else st.selectOnly(wid);
+      // Ensure the wire has control points for drag handles
+      st.ensureWireControlPoints(wid);
       return;
     }
 
@@ -488,6 +507,9 @@ export function Editor() {
         positions[id] = { x: Math.round((v.x + dx) / GRID) * GRID, y: Math.round((v.y + dy) / GRID) * GRID };
       });
       st.setComponentPositionsLive(positions);
+    } else if (g.type === 'wireDrag') {
+      // Live-update the control point position
+      st.updateWireControlPoint(g.wireId, g.cpIndex, world.x, world.y);
     } else if (g.type === 'marquee') {
       setMarquee({ x1: g.startWorld.x, y1: g.startWorld.y, x2: world.x, y2: world.y });
     }
@@ -501,7 +523,8 @@ export function Editor() {
       const hit = findPinAt(world, g.from, WIRE_SNAP_PX);
       if (hit) {
         // Drag-to-connect completed on a different pin (snapped magnetically).
-        st.addWire(g.from, hit, finalizeTrail(g.from, hit)); // clears wireStart
+        const ft = finalizeTrail(g.from, hit);
+        st.addWire(g.from, hit, ft.trail, ft.controlPoints); // clears wireStart
         resetWireRouting();
       }
       // Otherwise it was a click (no target pin): keep wireStart armed for a
@@ -512,6 +535,8 @@ export function Editor() {
         if (isMobile) st.clearSelection();
       }
       else st.cancelGesture();
+    } else if (g.type === 'wireDrag') {
+      st.endGesture();
     } else if (g.type === 'marquee') {
       const m = marquee;
       if (m) {
@@ -658,11 +683,23 @@ export function Editor() {
             selectedIds.includes(w.id) ||
             selectedIds.includes(w.from.componentId) ||
             selectedIds.includes(w.to.componentId);
-          // Freehand-drawn wires keep the user's routing (warped to follow
-          // moved components); wires without a trail use the default drape.
-          const d = w.path && w.path.length >= 3
-            ? smoothTrailPath(warpTrail(w.path as Pt[], a, b))
-            : physicalWirePath(a, b);
+
+          // Use control points if available, otherwise fall back to trail or default drape
+          let d: string;
+          const hasControlPoints = w.controlPoints && w.controlPoints.length >= 2;
+          if (hasControlPoints) {
+            d = physicalWirePath(a, b, w.controlPoints as Pt[]);
+          } else if (w.path && w.path.length >= 3) {
+            d = smoothTrailPath(warpTrail(w.path as Pt[], a, b));
+          } else {
+            d = physicalWirePath(a, b);
+          }
+
+          // Compute warped control points for handle rendering
+          const displayCP = hasControlPoints
+            ? warpControlPoints(w.controlPoints as Array<[number, number]>, a, b)
+            : null;
+
           return (
             <g key={w.id}>
               <>
@@ -670,14 +707,33 @@ export function Editor() {
                 <path d={d} fill="none" stroke="#e2e8f0" strokeWidth={3.5} strokeLinecap="round" />
               </>
               <path d={d} fill="none" stroke="transparent" strokeWidth={12} data-wire={w.id} style={{ cursor: 'pointer', pointerEvents: 'stroke' }} />
+              {/* Control-point handles for selected wire (draggable) */}
+              {selected && displayCP && displayCP.map((cp, i) => {
+                // Skip endpoints (index 0 and last) — they're locked to terminals
+                if (i === 0 || i === displayCP.length - 1) return null;
+                return (
+                  <circle
+                    key={`cp-${w.id}-${i}`}
+                    cx={cp[0]}
+                    cy={cp[1]}
+                    r={6}
+                    fill="white"
+                    stroke="#2563eb"
+                    strokeWidth={2}
+                    style={{ cursor: 'grab', pointerEvents: 'all' }}
+                    data-wire-cp={`${w.id}:${i}`}
+                  />
+                );
+              })}
               {/* wire label at midpoint of actual bezier path */}
               {w.label && (() => {
-                const mid = w.path && w.path.length >= 3
-                  ? warpTrail(w.path as Pt[], a, b)[Math.floor((w.path.length - 1) / 2)]
+                const mid = hasControlPoints
+                  ? { x: displayCP![Math.floor(displayCP!.length / 2)][0], y: displayCP![Math.floor(displayCP!.length / 2)][1] }
+                  : w.path && w.path.length >= 3
+                  ? (() => { const m = warpTrail(w.path as Pt[], a, b)[Math.floor((w.path.length - 1) / 2)]; return Array.isArray(m) ? { x: m[0], y: m[1] } : physicalWireMidpoint(a, b); })()
                   : physicalWireMidpoint(a, b);
-                const midPt = Array.isArray(mid) ? { x: mid[0], y: mid[1] } : mid;
                 return (
-                  <text x={midPt.x} y={midPt.y - 2}
+                  <text x={mid.x} y={mid.y - 2}
                     textAnchor="middle" fontFamily="sans-serif"
                     fontSize={10} fill="#475569" fontWeight="bold" pointerEvents="none">
                     {w.label}
