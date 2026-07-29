@@ -396,6 +396,67 @@ export function schematicWirePath(
   return `M ${a.x} ${a.y} L ${cx} ${cy - sy * r} Q ${cx} ${cy} ${cx + sx * r} ${cy} L ${b.x} ${b.y}`;
 }
 
+/**
+ * Derive 3 interior control points from a simplified mouse trail so that the
+ * resulting `physicalWirePath(a, b, controlPoints)` closely matches the shape
+ * the user actually drew.
+ *
+ * Strategy:
+ *  1. Compute cumulative arc-length along the trail.
+ *  2. Sample 3 points at t = 0.25, 0.5, 0.75 of the total arc-length.
+ *  3. If the trail is nearly a straight line (max perpendicular deviation
+ *     < threshold), return `undefined` so the caller can fall back to
+ *     `defaultWireControlPoints`.
+ */
+export function trailToControlPoints(
+  trail: Pt[],
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+): Pt[] | undefined {
+  if (trail.length < 2) return undefined;
+
+  // Build cumulative arc-length array
+  const cumLen: number[] = [0];
+  for (let i = 1; i < trail.length; i++) {
+    const d = Math.hypot(trail[i][0] - trail[i - 1][0], trail[i][1] - trail[i - 1][1]);
+    cumLen.push(cumLen[i - 1] + d);
+  }
+  const totalLen = cumLen[cumLen.length - 1];
+  if (totalLen < 20) return undefined; // too short to meaningfully shape
+
+  // Check if the trail is nearly a straight line (a→b)
+  const abLen = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  let maxDeviation = 0;
+  for (const p of trail) {
+    // Perpendicular distance from point to line a→b
+    const d = Math.abs(
+      (b.x - a.x) * (a.y - p[1]) - (a.x - p[0]) * (b.y - a.y),
+    ) / abLen;
+    if (d > maxDeviation) maxDeviation = d;
+  }
+  // If max deviation is small, trail is basically straight → use default droop
+  if (maxDeviation < 12) return undefined;
+
+  // Sample 3 control points at 25%, 50%, 75% of arc-length
+  const sampleAt = (targetFrac: number): Pt => {
+    const target = targetFrac * totalLen;
+    // Binary search for the segment that contains `target`
+    let lo = 0, hi = cumLen.length - 1;
+    while (lo < hi - 1) {
+      const mid = (lo + hi) >> 1;
+      if (cumLen[mid] <= target) lo = mid; else hi = mid;
+    }
+    const segLen = cumLen[hi] - cumLen[lo] || 1;
+    const t = (target - cumLen[lo]) / segLen;
+    return [
+      trail[lo][0] + (trail[hi][0] - trail[lo][0]) * t,
+      trail[lo][1] + (trail[hi][1] - trail[lo][1]) * t,
+    ];
+  };
+
+  return [sampleAt(0.25), sampleAt(0.5), sampleAt(0.75)];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Freehand wire trails (physical mode)
 // ─────────────────────────────────────────────────────────────────────────────

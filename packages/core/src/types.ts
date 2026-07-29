@@ -143,4 +143,6 @@ export interface SolverResult {
   /** Raw solved vector (node voltages then branch currents) for debugging. */
   solution?: number[];
   nodeVoltages?: number[];
+  /** Wire currents: positive = from→to direction, negative = to→from. */
+  wireCurrents?: Record<string, number>;
 }

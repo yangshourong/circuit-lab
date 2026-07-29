@@ -31,20 +31,36 @@ export const REGISTRY: ComponentDef[] = [
       const bb = b.node('b');
       const E = b.param('voltage');
       const r = b.param('internalResistance');
-      const m = b.addNode();
-      const k = b.addBranch();
-      b.voltageSource(a, m, E, k);
-      b.conductance(m, bb, 1 / Math.max(r, 0.01));
-      b.measure(() => {
-        // I[k] is current INTO the + terminal; delivered current = -I[k].
-        const I = -b.I(k);
-        b.reading = {
-          current: I,
-          voltage: b.V('a') - b.V('b'),
-          power: E * I,
-          pinVoltages: { a: b.V('a'), b: b.V('b') },
-        };
-      });
+
+      if (r < 1e-9) {
+        // Ideal voltage source: stamp directly between a and b (no internal node)
+        const k = b.addBranch();
+        b.voltageSource(a, bb, E, k);
+        b.measure(() => {
+          const I = -b.I(k);
+          b.reading = {
+            current: I,
+            voltage: b.V('a') - b.V('b'),
+            power: E * I,
+            pinVoltages: { a: b.V('a'), b: b.V('b') },
+          };
+        });
+      } else {
+        // Real source with internal resistance: internal node m between EMF and r
+        const m = b.addNode();
+        const k = b.addBranch();
+        b.voltageSource(a, m, E, k);
+        b.conductance(m, bb, 1 / r);
+        b.measure(() => {
+          const I = -b.I(k);
+          b.reading = {
+            current: I,
+            voltage: b.V('a') - b.V('b'),
+            power: E * I,
+            pinVoltages: { a: b.V('a'), b: b.V('b') },
+          };
+        });
+      }
     },
   },
 
@@ -143,7 +159,8 @@ export const REGISTRY: ComponentDef[] = [
 
   // 5. 滑动变阻器 (4-terminal sliding rheostat, J2341 style)
   //   A, B = 电阻丝两端; C, D = 金属杆两端
-  //   内部节点 P = 滑片触点; C, D 与 P 等电势（铜杆 ≈ 0Ω，用极大电导模拟）
+  //   C, D 通过铜杆等电势 → equipotential 合并为同一节点
+  //   滑片触点 P 与 C/D 同电压，直接用 C/D 节点作为 P
   //   接线效果：A+C/D → 可调; B+C/D → 可调(反向); A+B → 固定最大阻值; C+D → 近短路
   {
     type: 'rheostat',
@@ -161,38 +178,34 @@ export const REGISTRY: ComponentDef[] = [
     ],
     defaults: { maxResistance: 50, sliderPosition: 0.5 },
     mainPins: ['a', 'b'],
+    equipotential: () => [['c', 'd']],
     stamp(b, comp) {
       const nA = b.node('a');
       const nB = b.node('b');
-      const nC = b.node('c');
-      const nD = b.node('d');
+      // C and D are merged by equipotential; use C as the slider contact node
+      const nCD = b.node('c');
       const maxR = Math.max(b.param('maxResistance'), 1e-9);
       const pos = Math.max(0, Math.min(1, b.param('sliderPosition')));
-      // Internal node P (slider contact on resistance wire)
-      const nP = b.addNode();
-      // A→P: resistance proportional to slider position (pos=0 → 0Ω, pos=1 → maxR)
+      // A→P(C/D): resistance proportional to slider position (pos=0 → 0Ω, pos=1 → maxR)
       const rap = Math.max(pos * maxR, 1e-9);
-      // P→B: resistance proportional to (1 - slider position)
+      // P(C/D)→B: resistance proportional to (1 - slider position)
       const rpb = Math.max((1 - pos) * maxR, 1e-9);
-      b.conductance(nA, nP, 1 / rap);
-      b.conductance(nP, nB, 1 / rpb);
-      // C, D equipotential with P (copper rod ≈ 0Ω, modeled as 1e8S conductance)
-      const gRod = 1e8;
-      b.conductance(nC, nP, gRod);
-      b.conductance(nD, nP, gRod);
+      b.conductance(nA, nCD, 1 / rap);
+      b.conductance(nCD, nB, 1 / rpb);
       b.measure(() => {
-        // nP is an internal node (number index), read voltage directly from solution
-        const vP = (b as any).solution?.[nP] ?? 0;
-        const vAP = b.V('a') - vP;
-        const vPB = vP - b.V('b');
-        const iAP = vAP / rap;
-        const iPB = vPB / rpb;
+        const vA = b.V('a');
+        const vB = b.V('b');
+        const vCD = b.V('c');
+        const vAB = vA - vB;
+        const iAP = (vA - vCD) / rap;
+        const iBP = (vB - vCD) / rpb;
         b.reading = {
-          voltage: b.V('a') - b.V('b'),
+          voltage: vAB,
           current: iAP,
-          power: (b.V('a') - b.V('b')) * iAP,
-          sliderVoltage: vAP,
-          pinVoltages: { a: b.V('a'), b: b.V('b'), c: b.V('c'), d: b.V('d') },
+          currentBP: iBP,
+          power: vAB * iAP,
+          sliderVoltage: vA - vCD,
+          pinVoltages: { a: vA, b: vB, c: vCD, d: vCD },
         };
       });
     },

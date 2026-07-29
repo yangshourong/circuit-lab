@@ -15,6 +15,7 @@ import {
   simplifyTrail,
   smoothTrailPath,
   warpTrail,
+  trailToControlPoints,
   type Pt,
 } from '../geometry';
 import { getComponentDef } from '@circuit/core';
@@ -164,8 +165,10 @@ export function Editor() {
       );
     });
     const trail = cleaned.length > 2 ? cleaned : undefined;
-    // Always generate default control points for the new wire
-    const controlPoints = defaultWireControlPoints(a, b) as Pt[];
+    // Derive control points from the mouse trail so the wire shape matches
+    // what the user drew; fall back to default droop for straight/short trails
+    const cp = trail ? trailToControlPoints(trail, a, b) : undefined;
+    const controlPoints = cp ? cp : (defaultWireControlPoints(a, b) as Pt[]);
     return { trail, controlPoints };
   };
 

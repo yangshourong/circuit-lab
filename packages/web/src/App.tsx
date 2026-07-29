@@ -71,13 +71,18 @@ export default function App() {
   // ---- auto-solve on graph change (debounced) ----
   const solveTimer = useRef<ReturnType<typeof setTimeout>>();
   const doSolve = useCallback(() => {
-    const result = solveCircuit(graph);
-    if (result.ok) {
-      setSolver(result, null);
-      // Auto-record chart sample (built-in dedup skips identical values)
-      useStore.getState().recordChartSample();
-    } else {
-      setSolver(null, result.error ?? '求解失败');
+    try {
+      const result = solveCircuit(graph);
+      if (result.ok) {
+        setSolver(result, null);
+        // Auto-record chart sample (built-in dedup skips identical values)
+        useStore.getState().recordChartSample();
+      } else {
+        setSolver(null, result.error ?? '求解失败');
+      }
+    } catch (err) {
+      console.error('[solveCircuit] uncaught error:', err);
+      setSolver(null, '求解器内部错误');
     }
   }, [graph, setSolver]);
 

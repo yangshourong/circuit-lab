@@ -12,6 +12,12 @@ import { solveLinear } from './matrix';
 
 const PIN_SEP = '::';
 
+/** Wire conductance (models real wire as tiny resistance ~1e-6 Ω).
+ *  High enough that wire voltage drop is negligible (< 0.0002% error),
+ *  but avoids exact-zero conductance which would make the matrix singular
+ *  when two nodes are connected only by wires. */
+const WIRE_G = 1e6;
+
 class StampBuilderImpl implements StampBuilder {
   G: number[][];
   bvec: number[];
@@ -114,13 +120,18 @@ class StampBuilderImpl implements StampBuilder {
  * Solve a DC steady-state circuit using Modified Nodal Analysis.
  *
  * Strategy:
- *  - Merge equipotential pins (wires, closed switches, shorted elements) via union-find.
- *  - Index electrical nodes; allocate branch-current unknowns for voltage sources / ammeters.
- *  - Stamp each component; solve the resulting linear system.
+ *  - Merge equipotential pins (closed switches, shorted elements, rheostat C/D)
+ *    via union-find — but NOT wires.
+ *  - Wires are modeled as tiny-resistance conductance branches (WIRE_G = 1e4 S ≈ 1e-4 Ω),
+ *    so MNA directly solves wire currents.
+ *  - Index electrical nodes; stamp each component and wire; solve the linear system.
+ *  - Compute wire currents from solved node voltages: I = G × (V_from − V_to).
  *  - Run per-component measurement closures to produce human-readable readings.
  */
 export function solveCircuit(graph: CircuitGraph): SolverResult {
   // ---- 1. Union-find over pins (equipotential merging) ----
+  // Only merge internal equipotential pairs (switches, shorts, rheostat C/D).
+  // Wires are NOT merged here — they become conductance branches in MNA.
   const parent = new Map<string, string>();
   const find = (x: string): string => {
     let cur = x;
@@ -146,10 +157,7 @@ export function solveCircuit(graph: CircuitGraph): SolverResult {
     for (const p of def.pins) ensure(`${comp.id}${PIN_SEP}${p.id}`);
   }
 
-  for (const w of graph.wires ?? []) {
-    union(`${w.from.componentId}${PIN_SEP}${w.from.pin}`, `${w.to.componentId}${PIN_SEP}${w.to.pin}`);
-  }
-
+  // NOTE: Wires are NOT merged here. They become MNA conductance branches.
   for (const comp of graph.components) {
     const def = getComponentDef(comp.type);
     if (!def) continue;
@@ -231,12 +239,35 @@ export function solveCircuit(graph: CircuitGraph): SolverResult {
     compMeasures.set(comp.id, builder.measures);
   }
 
-  // ---- 5. Connectivity over ALL nodes (incl. internal) from stamped edges ----
+  // ---- 5. Stamp wire conductance branches ----
+  // Each wire is a tiny resistance (1/WIRE_G Ω) between its two endpoint nodes.
+  // After solving, wire current = WIRE_G × (V_from − V_to).
+  const wireNodes: Array<{ id: string; nFrom: number; nTo: number }> = [];
+  for (const w of graph.wires ?? []) {
+    const fromKey = `${w.from.componentId}${PIN_SEP}${w.from.pin}`;
+    const toKey = `${w.to.componentId}${PIN_SEP}${w.to.pin}`;
+    const nFrom = pinToNode[fromKey];
+    const nTo = pinToNode[toKey];
+
+    if (nFrom == null || nTo == null) continue;
+
+    // Same node (e.g. wire within an equipotential group) — no current
+    if (nFrom === nTo) {
+      wireNodes.push({ id: w.id, nFrom, nTo });
+      continue;
+    }
+
+    builder.conductance(nFrom, nTo, WIRE_G);
+    nunion(nFrom, nTo);
+    wireNodes.push({ id: w.id, nFrom, nTo });
+  }
+
+  // ---- 6. Connectivity over ALL nodes (incl. internal) from stamped edges ----
   const totalNodes = builder.nNodes;
   for (let i = 0; i < totalNodes; i++) if (!nParent.has(i)) nParent.set(i, i);
   for (const [a, b] of builder.edges) nunion(a, b);
 
-  // ---- 6. Ground exactly one node per connected component ----
+  // ---- 7. Ground exactly one node per connected component ----
   const grounded = new Set<number>();
   const grounds: number[] = [];
   for (let i = 0; i < totalNodes; i++) {
@@ -256,7 +287,7 @@ export function solveCircuit(graph: CircuitGraph): SolverResult {
     builder.bvec[g] = 0;
   }
 
-  // ---- 6. Solve ----
+  // ---- 8. Solve ----
   const size = builder.G.length;
   const A = builder.G.map((row) => row.slice(0, size));
   const x = solveLinear(A, builder.bvec.slice(0, size));
@@ -271,7 +302,20 @@ export function solveCircuit(graph: CircuitGraph): SolverResult {
   }
   builder.solution = x;
 
-  // ---- 7. Measurements ----
+  // ---- 9. Compute wire currents ----
+  // I = G × (V_from − V_to). Positive = current flows from→to.
+  const wireCurrents: Record<string, number> = {};
+  for (const wn of wireNodes) {
+    if (wn.nFrom === wn.nTo) {
+      wireCurrents[wn.id] = 0;
+    } else {
+      const vFrom = x[wn.nFrom] ?? 0;
+      const vTo = x[wn.nTo] ?? 0;
+      wireCurrents[wn.id] = WIRE_G * (vFrom - vTo);
+    }
+  }
+
+  // ---- 10. Measurements ----
   const readings: Record<string, ComponentReading> = {};
   for (const { comp, def } of stampComps) {
     builder.comp = comp;
@@ -289,5 +333,6 @@ export function solveCircuit(graph: CircuitGraph): SolverResult {
     readings,
     solution: x,
     nodeVoltages: x.slice(0, nNodes),
+    wireCurrents,
   };
 }

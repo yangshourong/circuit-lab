@@ -141,11 +141,15 @@ console.log('MNA engine benchmark suite\n');
   near(r1.readings['R'].voltage!, 2.5, 1e-3, 'r=1 terminal voltage = 2.5V');
 }
 
-// 11. Contradictory ideal voltage sources in parallel → graceful error
+// 11. Two identical ideal voltage sources in parallel → solvable (wire conductance model)
+// With the wire conductance model, each wire has ~1e-6 Ω resistance, so
+// even contradictory sources produce huge but finite currents rather than
+// singular matrices. Same-voltage sources in parallel are trivially consistent.
 {
-  console.log('11. 理想电压源直接并联：应优雅报错而非崩溃');
-  const bad = solve([C('B1', 'battery', { voltage: 3, internalResistance: 0 }), C('B2', 'battery', { voltage: 3, internalResistance: 0 }), C('R', 'resistor', { resistance: 5 })], [W('w1', ['B1', 'a'], ['R', 'a']), W('w2', ['R', 'b'], ['B1', 'b']), W('w3', ['B2', 'a'], ['R', 'a']), W('w4', ['R', 'b'], ['B2', 'b'])]);
-  ok(!bad.ok, 'reports unsolvable (graceful)');
+  console.log('11. 相同理想电压源并联：应可求解（导线电阻模型）');
+  const same = solve([C('B1', 'battery', { voltage: 3, internalResistance: 0 }), C('B2', 'battery', { voltage: 3, internalResistance: 0 }), C('R', 'resistor', { resistance: 5 })], [W('w1', ['B1', 'a'], ['R', 'a']), W('w2', ['R', 'b'], ['B1', 'b']), W('w3', ['B2', 'a'], ['R', 'a']), W('w4', ['R', 'b'], ['B2', 'b'])]);
+  ok(same.ok, 'same-voltage parallel solves');
+  near(same.readings['R'].voltage!, 3.0, 1e-3, 'R voltage ≈ 3V');
 }
 
 console.log(`\n=== ${pass} passed, ${fail} failed ===`);
