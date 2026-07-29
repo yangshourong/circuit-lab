@@ -4,14 +4,10 @@ import { useStore } from '../store';
 import { serializeExperiment, deserializeExperiment } from '@circuit/core';
 import { exportSvgToPng, downloadText, readFileAsText } from '../fileio';
 import { SponsorModal } from './SponsorModal';
+import UPDATES from '../updates.json';
 
 const GITHUB_URL = 'https://github.com/yangshourong/circuit-lab';
 const WECHAT_ID = '147535';
-const UPDATES: { date: string; msg: string }[] = [
-  { date: '2026-07-29', msg: '拟真化：电阻/电阻箱/电源/保险丝/LED 拟真化，删除电动机/电铃/接线柱' },
-  { date: '2026-07-29', msg: '拟真化：滑动变阻器参考实物图重新设计' },
-  { date: '2026-07-29', msg: '连线自然化：多段贝塞尔+中间控制点，支持拖拽调整导线走向' },
-];
 
 function AboutModal({ onClose }: { onClose: () => void }) {
   return (
