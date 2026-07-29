@@ -71,20 +71,26 @@ function SwitchBlade({ closed }: { closed: boolean }) {
  * 轴心在 (56, 35)，触点位于右侧 (90, y)，y 坐标随档位变化。
  */
 /**
- * 滑动变阻器滑杆 — 位置随接入阻值变化。
- * 瓷管范围 x=26~94，滑杆在 x=32~88 之间滑动。
+ * 滑动变阻器滑片 — 位置随接入阻值变化。
+ * 铜杆 y=24，瓷管 y=38~48，绕线区 x=25~93，滑片在 x=25~93 之间滑动。
  */
 function RheostatSlider({ resistance }: { resistance: number }) {
   const minR = 0, maxR = 100;
   const ratio = Math.max(0, Math.min(1, (resistance - minR) / (maxR - minR)));
-  const sx = 32 + ratio * 56;
+  // 滑片从左(A端,低阻值)到右(B端,高阻值)
+  const sx = 25 + ratio * 68;  // x=25~93
   return (
     <g pointerEvents="none">
-      <line x1={sx} y1={10} x2={sx} y2={27}
-        stroke="url(#metal)" strokeWidth="3" strokeLinecap="round" filter="url(#shadowSm)"/>
-      <polygon points={`${sx - 5},27 ${sx + 5},27 ${sx},35`}
-        fill="url(#metal)" stroke="#475569" strokeWidth="0.8"/>
-      <circle cx={sx} cy={31} r="2.5" fill="#dc2626"/>
+      {/* 滑片金属触臂（从铜杆向下压到瓷管） */}
+      <line x1={sx} y1={18} x2={sx} y2={39}
+        stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round"/>
+      <line x1={sx} y1={18} x2={sx} y2={39}
+        stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round"/>
+      {/* 滑片手柄（浅蓝色U形握把） */}
+      <path d={`M${sx - 5} 18 L${sx - 5} 14 Q${sx - 5} 10 ${sx - 2} 10 L${sx + 2} 10 Q${sx + 5} 10 ${sx + 5} 14 L${sx + 5} 18`}
+        fill="#93c5fd" stroke="#64748b" strokeWidth="0.6"/>
+      {/* 滑片底部触点（压在绕线上） */}
+      <ellipse cx={sx} cy={39} rx="3" ry="1.5" fill="#e5e7eb" stroke="#94a3b8" strokeWidth="0.4"/>
     </g>
   );
 }
@@ -250,6 +256,7 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
   const isLamp = comp.type === 'lamp';
   const isSwitch = comp.type === 'switch';
   const isMultiSwitch = comp.type === 'multiSwitch';
+  const isRheostat = comp.type === 'rheostat';
   const showReadings = useStore((s) => s.showReadings);
 
   // Meter-specific body dimensions (taller body, same width)
@@ -481,7 +488,7 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
 
           return (
             <g key={p.id}>
-              {mode === 'physical' && !isMeter && !isLamp && !isSwitch && !isMultiSwitch ? (
+              {mode === 'physical' && !isMeter && !isLamp && !isSwitch && !isMultiSwitch && !isRheostat ? (
                 /* ── 普通组件：接线柱在侧面电气引脚位置 ── */
                 <>
                   {wiring && (
@@ -619,6 +626,29 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
                             strokeWidth={armed ? 2.5 : 1.5} pointerEvents="none" />
                         )}
                         <circle cx={t.x} cy={t.y} r={wiring ? 11 : 9}
+                          fill="transparent" data-comp={comp.id} data-pin={p.id}
+                          style={{ cursor: wiring ? 'crosshair' : 'move' }} />
+                      </>
+                    );
+                  })()}
+                </>
+              ) : mode === 'physical' && isRheostat ? (
+                /* ── 滑动变阻器：底座红色接线柱可点击连线 ──
+                    pin 'a' (A) → 左端接线柱 (-48, 17)
+                    pin 'b' (B) → 右端接线柱 (48, 17) */
+                <>
+                  {(() => {
+                    const tx = p.id === 'a' ? -48 : 48;
+                    const ty = 17;
+                    return (
+                      <>
+                        {wiring && (
+                          <circle cx={tx} cy={ty} r={armed ? 13 : 11}
+                            fill={armed ? 'rgba(22,163,74,0.22)' : 'rgba(37,99,235,0.16)'}
+                            stroke={armed ? '#16a34a' : '#2563eb'}
+                            strokeWidth={armed ? 2.5 : 1.5} pointerEvents="none" />
+                        )}
+                        <circle cx={tx} cy={ty} r={wiring ? 11 : 9}
                           fill="transparent" data-comp={comp.id} data-pin={p.id}
                           style={{ cursor: wiring ? 'crosshair' : 'move' }} />
                       </>

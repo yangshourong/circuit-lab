@@ -355,30 +355,54 @@ export const COMPONENT_ART: Record<string, ComponentArt> = {
   },
 
   // ═════════════════════════════════════════════════════════════
-  // 5. 滑动变阻器
-  // ═════════════════════════════════════════════════════════════
+  // 5. 滑动变阻器（侧视拟真图）
+  // 水平布局：底座→瓷管绕线→铜杆→滑片→两端接线柱
   rheostat: {
     physical: `
-<line x1="8" y1="35" x2="18" y2="35" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
-<line x1="102" y1="35" x2="112" y2="35" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
-<!-- 线圈 -->
-<rect x="18" y="28" width="84" height="14" rx="3" fill="url(#ceramic)" stroke="#94a3b8" stroke-width="1" filter="url(#shadowSm)"/>
-<path d="M22 28 L22 42" stroke="#b45309" stroke-width="1.5"/>
-<path d="M28 28 L28 42" stroke="#b45309" stroke-width="1.5"/>
-<path d="M34 28 L34 42" stroke="#b45309" stroke-width="1.5"/>
-<path d="M40 28 L40 42" stroke="#b45309" stroke-width="1.5"/>
-<path d="M46 28 L46 42" stroke="#b45309" stroke-width="1.5"/>
-<path d="M52 28 L52 42" stroke="#b45309" stroke-width="1.5"/>
-<path d="M58 28 L58 42" stroke="#b45309" stroke-width="1.5"/>
-<path d="M64 28 L64 42" stroke="#b45309" stroke-width="1.5"/>
-<path d="M70 28 L70 42" stroke="#b45309" stroke-width="1.5"/>
-<path d="M76 28 L76 42" stroke="#b45309" stroke-width="1.5"/>
-<path d="M82 28 L82 42" stroke="#b45309" stroke-width="1.5"/>
-<path d="M88 28 L88 42" stroke="#b45309" stroke-width="1.5"/>
-<path d="M94 28 L94 42" stroke="#b45309" stroke-width="1.5"/>
-<!-- 滑块 -->
-<rect x="45" y="16" width="20" height="12" rx="2" fill="url(#metal)" stroke="#475569" stroke-width="0.8"/>
-<line x1="55" y1="16" x2="55" y2="28" stroke="#475569" stroke-width="1.5"/>
+<!-- 底座（浅蓝色绝缘底板） -->
+<rect x="5" y="54" width="110" height="12" rx="3" fill="#bfdbfe" stroke="#64748b" stroke-width="0.8" filter="url(#shadowSm)"/>
+<rect x="7" y="55" width="106" height="3" rx="1.5" fill="white" opacity="0.15"/>
+<!-- 左底座支脚 -->
+<path d="M12 42 L12 54 L22 54 L22 42" fill="#93c5fd" stroke="#64748b" stroke-width="0.6"/>
+<rect x="14" y="44" width="6" height="3" rx="1" fill="#60a5fa" opacity="0.3"/>
+<!-- 右底座支脚 -->
+<path d="M98 42 L98 54 L108 54 L108 42" fill="#93c5fd" stroke="#64748b" stroke-width="0.6"/>
+<rect x="100" y="44" width="6" height="3" rx="1" fill="#60a5fa" opacity="0.3"/>
+<!-- 瓷管（陶瓷圆管侧视） -->
+<rect x="10" y="38" width="100" height="10" rx="5" fill="url(#ceramic)" stroke="#94a3b8" stroke-width="0.8"/>
+<rect x="12" y="39" width="96" height="3" rx="1.5" fill="white" opacity="0.12"/>
+<!-- 电阻丝绕线（竖线密集排列，两端留出空管段） -->
+<line x1="25" y1="39" x2="25" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="29" y1="39" x2="29" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="33" y1="39" x2="33" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="37" y1="39" x2="37" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="41" y1="39" x2="41" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="45" y1="39" x2="45" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="49" y1="39" x2="49" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="53" y1="39" x2="53" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="57" y1="39" x2="57" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="61" y1="39" x2="61" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="65" y1="39" x2="65" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="69" y1="39" x2="69" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="73" y1="39" x2="73" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="77" y1="39" x2="77" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="81" y1="39" x2="81" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="85" y1="39" x2="85" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="89" y1="39" x2="89" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="93" y1="39" x2="93" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
+<!-- 铜杆（顶部金属横杆） -->
+<rect x="8" y="24" width="104" height="4" rx="2" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.5"/>
+<rect x="10" y="24.5" width="100" height="1.2" rx="0.6" fill="white" opacity="0.15"/>
+<!-- 左接线柱 (pin a A端) -->
+<rect x="7" y="48" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<rect x="8" y="48" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
+<text x="12" y="62" font-family="sans-serif" font-size="3.5" fill="#475569" text-anchor="middle" font-weight="bold">A</text>
+<!-- 右接线柱 (pin b B端) -->
+<rect x="103" y="48" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<rect x="104" y="48" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
+<text x="108" y="62" font-family="sans-serif" font-size="3.5" fill="#475569" text-anchor="middle" font-weight="bold">B</text>
+<!-- P标签（滑片标记） -->
+<text x="60" y="14" font-family="sans-serif" font-size="4" fill="#475569" text-anchor="middle" font-weight="bold">P</text>
 `.trim(),
     schematic: `
 <line x1="8" y1="35" x2="25" y2="35" stroke="#334155" stroke-width="2.5" stroke-linecap="round"/>

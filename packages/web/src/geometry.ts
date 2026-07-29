@@ -45,6 +45,10 @@ function isMultiSwitchType(type: string): boolean {
   return type === 'multiSwitch';
 }
 
+function isRheostatType(type: string): boolean {
+  return type === 'rheostat';
+}
+
 /**
  * 灯泡/开关在物理模式下的底座接线柱本地坐标。
  *   pin 'a' (+) → 左侧红色接线柱 (-33, 16)
@@ -71,6 +75,15 @@ function multiSwitchTerminalLocal(_comp: PlacedComponent, pinId: string): { x: n
     e: { x: 43, y: 15.5 },
   };
   return map[pinId] ?? { x: 0, y: 0 };
+}
+
+/**
+ * 滑动变阻器在物理模式下的底座接线柱本地坐标。
+ *   A (pin 'a') → (-48, 17)  左端红色接线柱
+ *   B (pin 'b') → (48, 17)   右端红色接线柱
+ */
+function rheostatTerminalLocal(_comp: PlacedComponent, pinId: string): { x: number; y: number } {
+  return pinId === 'a' ? { x: -48, y: 17 } : { x: 48, y: 17 };
 }
 
 /**
@@ -110,6 +123,8 @@ export function meterPhysicalEndpoint(
     local = lampTerminalLocal(comp, pinId);
   } else if (isMultiSwitchType(comp.type)) {
     local = multiSwitchTerminalLocal(comp, pinId);
+  } else if (isRheostatType(comp.type)) {
+    local = rheostatTerminalLocal(comp, pinId);
   }
   if (!local) return null;
   const rad = ((comp.rotation ?? 0) * Math.PI) / 180;
@@ -132,12 +147,13 @@ function terminalOutwardDir(
   pinId: string,
 ): { x: number; y: number } {
   let local = meterPhysicalEndpoint
-    ? (isMeterType(comp.type) || isLampType(comp.type) || isSwitchType(comp.type) || isMultiSwitchType(comp.type))
+    ? (isMeterType(comp.type) || isLampType(comp.type) || isSwitchType(comp.type) || isMultiSwitchType(comp.type) || isRheostatType(comp.type))
       ? (() => {
           // Recompute the local coords to get direction
           if (isMeterType(comp.type)) return meterTerminalLocal(comp, pinId);
           if (isLampType(comp.type) || isSwitchType(comp.type)) return lampTerminalLocal(comp, pinId);
           if (isMultiSwitchType(comp.type)) return multiSwitchTerminalLocal(comp, pinId);
+          if (isRheostatType(comp.type)) return rheostatTerminalLocal(comp, pinId);
           return null;
         })()
       : null
