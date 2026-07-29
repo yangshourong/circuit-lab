@@ -1,6 +1,6 @@
 {
   "name": "@circuit/core",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Pure-TypeScript circuit simulation engine for the Intelligent Circuit Lab (zero DOM dependency).",
   "type": "module",
   "main": "dist/index.js",

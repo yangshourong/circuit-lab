@@ -622,7 +622,7 @@ export function Editor() {
         {/* ═══ COMPONENTS ═══ */}
         {graph.components.filter(c => {
           // In schematic mode, hide wire/terminal/annotation — they are junction-only
-          if (view.mode === 'schematic') return !['wire', 'terminal', 'annotation'].includes(c.type);
+          if (view.mode === 'schematic') return !['wire', 'annotation'].includes(c.type);
           return true;
         }).map((c) => {
           const def = getComponentDef(c.type);

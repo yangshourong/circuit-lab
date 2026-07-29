@@ -22,7 +22,7 @@ interface Props {
 function bodyReadingLabel(type: string, comp: PlacedComponent, reading?: ComponentReading): string {
   if (type === 'switch') return comp.closed === false ? '断开' : '闭合';
   if (type === 'battery') return reading ? `I=${fmt(reading.current)}A` : '';
-  if (type === 'wire' || type === 'terminal' || type === 'annotation' || type === 'readingLabel') return '';
+  if (type === 'wire' || type === 'annotation' || type === 'readingLabel') return '';
   if (type === 'ammeter' || type === 'voltmeter' || type === 'galvanometer') {
     return reading ? `${fmt(reading.measured)} ${type === 'voltmeter' ? 'V' : 'A'}` : '';
   }
@@ -71,14 +71,14 @@ function SwitchBlade({ closed }: { closed: boolean }) {
  * 轴心在 (56, 35)，触点位于右侧 (90, y)，y 坐标随档位变化。
  */
 /**
- * 滑动变阻器滑片 — 位置随接入阻值变化。
+ * 滑动变阻器滑片 — 位置随滑片位置参数变化。
  * 铜杆 y=24，瓷管 y=38~48，绕线区 x=25~93，滑片在 x=25~93 之间滑动。
+ * sliderPosition: 0=左端(A端), 1=右端(B端)
  */
-function RheostatSlider({ resistance }: { resistance: number }) {
-  const minR = 0, maxR = 100;
-  const ratio = Math.max(0, Math.min(1, (resistance - minR) / (maxR - minR)));
-  // 滑片从左(A端,低阻值)到右(B端,高阻值)
-  const sx = 25 + ratio * 68;  // x=25~93
+function RheostatSlider({ sliderPosition }: { sliderPosition: number }) {
+  const pos = Math.max(0, Math.min(1, sliderPosition));
+  // 滑片从左(A端,pos=0)到右(B端,pos=1)
+  const sx = 25 + pos * 68;  // x=25~93
   return (
     <g pointerEvents="none">
       {/* 滑片金属触臂（从铜杆向下压到瓷管） */}
@@ -95,14 +95,169 @@ function RheostatSlider({ resistance }: { resistance: number }) {
   );
 }
 
-/** 电路图模式变阻器箭头 — 阻值 0=最左、100=最右 */
-function RheostatSliderSchematic({ resistance }: { resistance: number }) {
-  const ratio = Math.max(0, Math.min(1, resistance / 100));
+/** 电路图模式变阻器箭头 — sliderPosition 0=最左、1=最右 */
+function RheostatSliderSchematic({ sliderPosition }: { sliderPosition: number }) {
+  const ratio = Math.max(0, Math.min(1, sliderPosition));
   const sx = 38 + 8 + ratio * (44 - 16); // 电阻框 x=38~82，箭头在 46~68
   return (
     <g pointerEvents="none">
       <line x1={sx} y1={12} x2={sx} y2={27} stroke="#334155" strokeWidth="2.5" strokeLinecap="round"/>
       <polygon points={`${sx - 4},21 ${sx + 4},21 ${sx},28`} fill="#334155"/>
+    </g>
+  );
+}
+
+/**
+ * 定值电阻色环 — 根据阻值按真实4环色码标准动态渲染。
+ * 第1环=十位，第2环=个位，第3环=乘数(10^n)，第4环=误差(金=5%)。
+ * 电阻体 x=26~94, y=22~48; 色环分布在体上。
+ */
+function ResistorBands({ resistance }: { resistance: number }) {
+  // ── 色码颜色表 ──
+  const BAND_COLORS: Record<number, string> = {
+    0: '#1e293b',  // 黑
+    1: '#78350f',  // 棕
+    2: '#dc2626',  // 红
+    3: '#ea580c',  // 橙
+    4: '#eab308',  // 黄
+    5: '#16a34a',  // 绿
+    6: '#2563eb',  // 蓝
+    7: '#7c3aed',  // 紫
+    8: '#6b7280',  // 灰
+    9: '#e5e7eb',  // 白
+  };
+  const GOLD = '#d4a017';
+  // const SILVER = '#9ca3af';
+
+  // ── 阻值→4环编码 ──
+  let d1 = 0, d2 = 0, exp = 0;
+  const R = Math.max(resistance, 0.01);
+  let norm = R;
+  // 归一化到 10 ≤ norm < 100
+  while (norm >= 100) { norm /= 10; exp++; }
+  while (norm < 10)  { norm *= 10; exp--; }
+  d1 = Math.floor(norm / 10);
+  d2 = Math.round(norm - d1 * 10);
+  if (d2 >= 10) { d2 = 0; d1 += 1; exp += 1; }
+  if (d1 >= 10) { d1 = 9; d2 = 9; }
+
+  const colors = [
+    BAND_COLORS[d1] ?? '#1e293b',             // 第1环：十位
+    BAND_COLORS[d2] ?? '#1e293b',             // 第2环：个位
+    BAND_COLORS[Math.max(0, exp)] ?? '#1e293b', // 第3环：乘数
+    GOLD,                                       // 第4环：误差5%
+  ];
+
+  // 色环位置：第1~3环在左半，第4环在右半（与实物一致）
+  // 电阻体 x=39~81, y=28~42; 金属帽占 36~41 和 79~84
+  const bandX = [44, 51, 58, 72];
+
+  return (
+    <g pointerEvents="none">
+      {colors.map((fill, i) => (
+        <rect key={i}
+          x={bandX[i]} y="28" width="4" height="14" rx="0.5"
+          fill={fill} opacity="0.92"
+        />
+      ))}
+    </g>
+  );
+}
+
+/**
+ * 电阻箱步进拨盘（仅实物图模式）。
+ * ZX21 型电阻箱：4 个步进拨盘（×1k / ×100 / ×10 / ×1），
+ * 每个拨盘 0-9 档，拨盘顶部有数字窗口显示当前档位数字。
+ * viewBox 130×80，中心 (65, 40)，4 旋钮间距 30px 避免刻度环重叠。
+ */
+function ResistanceBoxKnobs({ resistance }: { resistance: number }) {
+  const R = Math.max(0, Math.min(9999, Math.round(resistance)));
+  const d1 = Math.floor(R / 1000);
+  const d2 = Math.floor((R % 1000) / 100);
+  const d3 = Math.floor((R % 100) / 10);
+  const d4 = R % 10;
+  const digits = [d1, d2, d3, d4];
+  const labels = ['×1k', '×100', '×10', '×1'];
+  // 4 旋钮均匀分布：x=20,50,80,110 间距 30px，数字环半径 ~13 不重叠
+  const knobXs = [20, 50, 80, 110];
+  const knobY = 36;
+  const knobR = 10;
+
+  return (
+    <g pointerEvents="none">
+      {/* ── 4 个步进拨盘 ── */}
+      {digits.map((d, i) => {
+        const cx = knobXs[i];
+        // 指针角度：0 在 12 点钟方向（−90°），每档 36°
+        const angleDeg = -90 + d * 36;
+        const angleRad = (angleDeg * Math.PI) / 180;
+        const px = cx + (knobR - 2.5) * Math.cos(angleRad);
+        const py = knobY + (knobR - 2.5) * Math.sin(angleRad);
+
+        return (
+          <g key={i}>
+            {/* 旋钮外圈 */}
+            <circle cx={cx} cy={knobY} r={knobR}
+              fill="#cbd5e1" stroke="#94a3b8" strokeWidth="0.5"/>
+            {/* 旋钮内圈 */}
+            <circle cx={cx} cy={knobY} r={knobR - 2.5}
+              fill="#e2e8f0" stroke="#94a3b8" strokeWidth="0.3"/>
+            {/* 数字窗口（12 点方向上方，远离刻度环避免遮挡） */}
+            <rect x={cx - 4} y={knobY - knobR - 12} width="8" height="5.5" rx="1"
+              fill="#1e293b" stroke="#475569" strokeWidth="0.3"/>
+            <text x={cx} y={knobY - knobR - 7.7}
+              fontFamily="monospace" fontSize="3.5" fill="#22d3ee"
+              textAnchor="middle" fontWeight="bold">
+              {d}
+            </text>
+            {/* 0-9 数字环（在旋钮外侧） */}
+            {Array.from({ length: 10 }, (_, n) => {
+              const ta = ((-90 + n * 36) * Math.PI) / 180;
+              const tx = cx + (knobR + 3.5) * Math.cos(ta);
+              const ty = knobY + (knobR + 3.5) * Math.sin(ta);
+              return (
+                <text key={n} x={tx} y={ty + 1.2}
+                  fontFamily="sans-serif" fontSize="2.5"
+                  fill={n === d ? '#dc2626' : '#64748b'}
+                  textAnchor="middle"
+                  fontWeight={n === d ? 'bold' : 'normal'}>
+                  {n}
+                </text>
+              );
+            })}
+            {/* 指针线（从中心指向当前档位） */}
+            <line x1={cx} y1={knobY} x2={px} y2={py}
+              stroke="#dc2626" strokeWidth="1.2" strokeLinecap="round"/>
+            {/* 中心点 */}
+            <circle cx={cx} cy={knobY} r="1.5" fill="#94a3b8" stroke="#64748b" strokeWidth="0.3"/>
+            {/* 倍率标签（旋钮下方，留足够间距避免遮挡底部刻度数字） */}
+            <text x={cx} y={knobY + knobR + 10}
+              fontFamily="sans-serif" fontSize="2.8" fill="#475569"
+              textAnchor="middle" fontWeight="bold">
+              {labels[i]}
+            </text>
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+/**
+ * 电源 LED 数显（仅实物图模式）。
+ * 显示当前电源电压值，模拟真实学生电源的数码管显示。
+ * viewBox 120×90，数显窗口在 (30,24)~(90,40) 区域。
+ */
+function BatteryDisplay({ voltage }: { voltage: number }) {
+  const v = Math.max(0, Math.min(99.9, voltage));
+  const vStr = v < 10 ? v.toFixed(1) : String(Math.round(v * 10) / 10);
+
+  return (
+    <g pointerEvents="none">
+      <text x="60" y="37" fontFamily="monospace" fontSize="9" fill="#22d3ee"
+        textAnchor="middle" fontWeight="bold">
+        {vStr}V
+      </text>
     </g>
   );
 }
@@ -208,7 +363,7 @@ function ReadingLabelDisplay({ comp }: { comp: PlacedComponent }) {
   let nearest: PlacedComponent | null = null;
   let bestD = Infinity;
   for (const c of graph.components) {
-    if (c.id === comp.id || c.type === 'annotation' || c.type === 'readingLabel' || c.type === 'terminal' || c.type === 'wire') continue;
+    if (c.id === comp.id || c.type === 'annotation' || c.type === 'readingLabel' || c.type === 'wire') continue;
     const d = Math.hypot(c.x - comp.x, c.y - comp.y);
     if (d < bestD) { bestD = d; nearest = c; }
   }
@@ -257,13 +412,18 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
   const isSwitch = comp.type === 'switch';
   const isMultiSwitch = comp.type === 'multiSwitch';
   const isRheostat = comp.type === 'rheostat';
+  const isResistor = comp.type === 'resistor' || comp.type === 'fuse' || comp.type === 'led';
+  const isResistanceBox = comp.type === 'resistanceBox';
+  const isBattery = comp.type === 'battery';
   const showReadings = useStore((s) => s.showReadings);
 
   // Meter-specific body dimensions (taller body, same width)
   // Non-meter: body spans y -35..+35 (height 70)
   // Meter: body spans y -70..+70 (height 140)
-  const meterBodyTop = isMeter ? -70 : -35;
-  const meterBodyH = isMeter ? 140 : 70;
+  // ResistanceBox: body spans y -40..+40 (height 80, wider 130)
+  // Battery: body spans y -45..+45 (height 90)
+  const meterBodyTop = isMeter ? -70 : (isResistanceBox ? -40 : (isBattery ? -45 : -35));
+  const meterBodyH = isMeter ? 140 : (isResistanceBox ? 80 : (isBattery ? 90 : 70));
   // Selection / fault box: 7px padding around body
   const boxY = meterBodyTop - 7;
   const boxH = meterBodyH + 14;
@@ -286,9 +446,9 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
       {/* selection highlight */}
       {selected && (
         <rect
-          x={-66}
+          x={isResistanceBox ? -71 : -66}
           y={boxY}
-          width={132}
+          width={isResistanceBox ? 142 : 132}
           height={boxH}
           fill="none"
           stroke="#2563eb"
@@ -300,7 +460,14 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
       )}
 
       {/* body art */}
-      <svg x={-60} y={meterBodyTop} width={120} height={meterBodyH} viewBox={isMeter ? "0 0 120 140" : "0 0 120 70"} overflow="visible">
+      <svg
+        x={isResistanceBox ? -65 : -60}
+        y={meterBodyTop}
+        width={isResistanceBox ? 130 : 120}
+        height={meterBodyH}
+        viewBox={isResistanceBox ? "0 0 130 80" : (isBattery ? "0 0 120 90" : (isMeter ? "0 0 120 140" : "0 0 120 70"))}
+        overflow="visible"
+      >
         <defs>
           <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#e2e8f0"/>
@@ -347,6 +514,21 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
 
         {/* ═══ 动态状态叠加层（仅 physical 模式） ═══ */}
 
+        {/* 定值电阻：色环随阻值变化 */}
+        {mode === 'physical' && comp.type === 'resistor' && (
+          <ResistorBands resistance={Number(comp.params.resistance ?? 10)} />
+        )}
+
+        {/* 电阻箱：旋钮+读数窗随阻值变化 */}
+        {mode === 'physical' && isResistanceBox && (
+          <ResistanceBoxKnobs resistance={Number(comp.params.resistance ?? 10)} />
+        )}
+
+        {/* 电源：LED数显随电压变化 */}
+        {mode === 'physical' && isBattery && (
+          <BatteryDisplay voltage={Number(comp.params.voltage ?? 3)} />
+        )}
+
         {/* 开关：刀闸位置随开合状态变化 */}
         {mode === 'physical' && comp.type === 'switch' && (
           <SwitchBlade closed={comp.closed !== false} />
@@ -357,12 +539,12 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
           <MultiSwitchWiper position={Number(comp.params.position ?? 1)} />
         )}
 
-        {/* 滑动变阻器：滑杆位置随阻值变化 */}
+        {/* 滑动变阻器：滑片位置随参数变化 */}
         {mode === 'physical' && comp.type === 'rheostat' && (
-          <RheostatSlider resistance={Number(comp.params.resistance ?? 10)} />
+          <RheostatSlider sliderPosition={Number(comp.params.sliderPosition ?? 0.5)} />
         )}
         {mode === 'schematic' && comp.type === 'rheostat' && (
-          <RheostatSliderSchematic resistance={Number(comp.params.resistance ?? 10)} />
+          <RheostatSliderSchematic sliderPosition={Number(comp.params.sliderPosition ?? 0.5)} />
         )}
 
         {/* 灯泡：光晕随实际功率变化 */}
@@ -398,9 +580,9 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
       {fault !== 'normal' && (
         <g pointerEvents="none">
           <rect
-            x={-66}
+            x={isResistanceBox ? -71 : -66}
             y={boxY}
-            width={132}
+            width={isResistanceBox ? 142 : 132}
             height={boxH}
             fill="none"
             stroke="#dc2626"
@@ -488,7 +670,7 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
 
           return (
             <g key={p.id}>
-              {mode === 'physical' && !isMeter && !isLamp && !isSwitch && !isMultiSwitch && !isRheostat ? (
+              {mode === 'physical' && !isMeter && !isLamp && !isSwitch && !isMultiSwitch && !isRheostat && !isResistor && !isResistanceBox && !isBattery ? (
                 /* ── 普通组件：接线柱在侧面电气引脚位置 ── */
                 <>
                   {wiring && (
@@ -632,14 +814,14 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
                     );
                   })()}
                 </>
-              ) : mode === 'physical' && isRheostat ? (
-                /* ── 滑动变阻器：底座红色接线柱可点击连线 ──
-                    pin 'a' (A) → 左端接线柱 (-48, 17)
-                    pin 'b' (B) → 右端接线柱 (48, 17) */
+              ) : mode === 'physical' && isResistor ? (
+                /* ── 定值电阻：底座红色接线柱可点击连线 ──
+                     pin 'a' (A) → 左侧接线柱 (-33, 9)
+                     pin 'b' (B) → 右侧接线柱 (33, 9) */
                 <>
                   {(() => {
-                    const tx = p.id === 'a' ? -48 : 48;
-                    const ty = 17;
+                    const tx = p.id === 'a' ? -33 : 33;
+                    const ty = 9;
                     return (
                       <>
                         {wiring && (
@@ -649,6 +831,82 @@ function ComponentViewImpl({ comp, def, selected, reading, mode, largeScreen, wi
                             strokeWidth={armed ? 2.5 : 1.5} pointerEvents="none" />
                         )}
                         <circle cx={tx} cy={ty} r={wiring ? 11 : 9}
+                          fill="transparent" data-comp={comp.id} data-pin={p.id}
+                          style={{ cursor: wiring ? 'crosshair' : 'move' }} />
+                      </>
+                    );
+                  })()}
+                </>
+              ) : mode === 'physical' && isResistanceBox ? (
+                /* ── 电阻箱：箱体面板底部接线柱可点击连线 ──
+                     pin 'a' (A) → 左侧接线柱 (-40, 22)
+                     pin 'b' (B) → 右侧接线柱 (40, 22) */
+                <>
+                  {(() => {
+                    const tx = p.id === 'a' ? -40 : 40;
+                    const ty = 22;
+                    return (
+                      <>
+                        {wiring && (
+                          <circle cx={tx} cy={ty} r={armed ? 13 : 11}
+                            fill={armed ? 'rgba(22,163,74,0.22)' : 'rgba(37,99,235,0.16)'}
+                            stroke={armed ? '#16a34a' : '#2563eb'}
+                            strokeWidth={armed ? 2.5 : 1.5} pointerEvents="none" />
+                        )}
+                        <circle cx={tx} cy={ty} r={wiring ? 11 : 9}
+                          fill="transparent" data-comp={comp.id} data-pin={p.id}
+                          style={{ cursor: wiring ? 'crosshair' : 'move' }} />
+                      </>
+                    );
+                  })()}
+                </>
+              ) : mode === 'physical' && isBattery ? (
+                /* ── 电源：顶盖两端接线柱可点击连线 ──
+                     pin 'a' (+) → 右侧红色接线柱 (35, -31)
+                     pin 'b' (−) → 左侧银色接线柱 (-35, -31) */
+                <>
+                  {(() => {
+                    const tx = p.id === 'a' ? 35 : -35;
+                    const ty = -31;
+                    return (
+                      <>
+                        {wiring && (
+                          <circle cx={tx} cy={ty} r={armed ? 13 : 11}
+                            fill={armed ? 'rgba(22,163,74,0.22)' : 'rgba(37,99,235,0.16)'}
+                            stroke={armed ? '#16a34a' : '#2563eb'}
+                            strokeWidth={armed ? 2.5 : 1.5} pointerEvents="none" />
+                        )}
+                        <circle cx={tx} cy={ty} r={wiring ? 11 : 9}
+                          fill="transparent" data-comp={comp.id} data-pin={p.id}
+                          style={{ cursor: wiring ? 'crosshair' : 'move' }} />
+                      </>
+                    );
+                  })()}
+                </>
+              ) : mode === 'physical' && isRheostat ? (
+                /* ── 滑动变阻器：4端接线柱可点击连线 ──
+                     A (pin 'a') → 左下接线柱 (-48, 17)
+                     B (pin 'b') → 右下接线柱 (48, 17)
+                     C (pin 'c') → 左上接线柱 (-48, -17)
+                     D (pin 'd') → 右上接线柱 (48, -17) */
+                <>
+                  {(() => {
+                    const posMap: Record<string, { x: number; y: number }> = {
+                      a: { x: -48, y: 17 },
+                      b: { x: 48, y: 17 },
+                      c: { x: -48, y: -17 },
+                      d: { x: 48, y: -17 },
+                    };
+                    const t = posMap[p.id] ?? { x: l.x, y: l.y };
+                    return (
+                      <>
+                        {wiring && (
+                          <circle cx={t.x} cy={t.y} r={armed ? 13 : 11}
+                            fill={armed ? 'rgba(22,163,74,0.22)' : 'rgba(37,99,235,0.16)'}
+                            stroke={armed ? '#16a34a' : '#2563eb'}
+                            strokeWidth={armed ? 2.5 : 1.5} pointerEvents="none" />
+                        )}
+                        <circle cx={t.x} cy={t.y} r={wiring ? 11 : 9}
                           fill="transparent" data-comp={comp.id} data-pin={p.id}
                           style={{ cursor: wiring ? 'crosshair' : 'move' }} />
                       </>

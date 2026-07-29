@@ -59,7 +59,7 @@ const PARALLEL_GAP = 28;    // 并联支路之间的垂直间距
 const ROW_GAP = 24;        // 蛇形折叠时行（或列）之间的间距
 const RET_MARGIN = 20;      // 回流线距离最底元件的留白
 
-const HIDDEN_TYPES = new Set(['wire', 'terminal', 'annotation']);
+const HIDDEN_TYPES = new Set(['wire', 'annotation']);
 const METER_TYPES = new Set(['voltmeter', 'galvanometer']); // 典型并联测量表
 
 // ─── Union-Find ──────────────────────────────────────────

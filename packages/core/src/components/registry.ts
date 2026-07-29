@@ -141,24 +141,59 @@ export const REGISTRY: ComponentDef[] = [
     },
   },
 
-  // 5. 滑动变阻器 (sliding rheostat, modeled as 2-terminal adjustable resistor for P0)
+  // 5. 滑动变阻器 (4-terminal sliding rheostat, J2341 style)
+  //   A, B = 电阻丝两端; C, D = 金属杆两端
+  //   内部节点 P = 滑片触点; C, D 与 P 等电势（铜杆 ≈ 0Ω，用极大电导模拟）
+  //   接线效果：A+C/D → 可调; B+C/D → 可调(反向); A+B → 固定最大阻值; C+D → 近短路
   {
     type: 'rheostat',
     name: '滑动变阻器',
     category: 'load',
-    pins: TWO_PIN,
-    params: [{ key: 'resistance', label: '接入阻值', type: 'number', unit: 'Ω', min: 0, max: 100, step: 1, default: 10 }],
-    defaults: { resistance: 10 },
+    pins: [
+      { id: 'a', x: -45, y: 8, label: 'A' },
+      { id: 'b', x: 45, y: 8, label: 'B' },
+      { id: 'c', x: -45, y: -8, label: 'C' },
+      { id: 'd', x: 45, y: -8, label: 'D' },
+    ],
+    params: [
+      { key: 'maxResistance', label: '最大阻值', type: 'number', unit: 'Ω', min: 1, max: 1000, step: 1, default: 50 },
+      { key: 'sliderPosition', label: '滑片位置', type: 'number', unit: '', min: 0, max: 1, step: 0.01, default: 0.5 },
+    ],
+    defaults: { maxResistance: 50, sliderPosition: 0.5 },
     mainPins: ['a', 'b'],
     stamp(b, comp) {
-      const a = b.node('a');
-      const bb = b.node('b');
-      const R = Math.max(b.param('resistance'), 1e-9);
-      b.conductance(a, bb, 1 / R);
+      const nA = b.node('a');
+      const nB = b.node('b');
+      const nC = b.node('c');
+      const nD = b.node('d');
+      const maxR = Math.max(b.param('maxResistance'), 1e-9);
+      const pos = Math.max(0, Math.min(1, b.param('sliderPosition')));
+      // Internal node P (slider contact on resistance wire)
+      const nP = b.addNode();
+      // A→P: resistance proportional to slider position (pos=0 → 0Ω, pos=1 → maxR)
+      const rap = Math.max(pos * maxR, 1e-9);
+      // P→B: resistance proportional to (1 - slider position)
+      const rpb = Math.max((1 - pos) * maxR, 1e-9);
+      b.conductance(nA, nP, 1 / rap);
+      b.conductance(nP, nB, 1 / rpb);
+      // C, D equipotential with P (copper rod ≈ 0Ω, modeled as 1e8S conductance)
+      const gRod = 1e8;
+      b.conductance(nC, nP, gRod);
+      b.conductance(nD, nP, gRod);
       b.measure(() => {
-        const v = b.V('a') - b.V('b');
-        const i = v / R;
-        b.reading = { voltage: v, current: i, power: v * i, pinVoltages: { a: b.V('a'), b: b.V('b') } };
+        // nP is an internal node (number index), read voltage directly from solution
+        const vP = (b as any).solution?.[nP] ?? 0;
+        const vAP = b.V('a') - vP;
+        const vPB = vP - b.V('b');
+        const iAP = vAP / rap;
+        const iPB = vPB / rpb;
+        b.reading = {
+          voltage: b.V('a') - b.V('b'),
+          current: iAP,
+          power: (b.V('a') - b.V('b')) * iAP,
+          sliderVoltage: vAP,
+          pinVoltages: { a: b.V('a'), b: b.V('b'), c: b.V('c'), d: b.V('d') },
+        };
       });
     },
   },
@@ -264,18 +299,7 @@ export const REGISTRY: ComponentDef[] = [
     equipotential: () => [['a', 'b']],
   },
 
-  // 11. 接线柱 (binding post, equipotential pass-through)
-  {
-    type: 'terminal',
-    name: '接线柱',
-    category: 'wire',
-    pins: TWO_PIN,
-    params: [],
-    defaults: {},
-    equipotential: () => [['a', 'b']],
-  },
-
-  // 12. 注释文字 (annotation, no electrical behavior)
+  // 11. 注释文字 (annotation, no electrical behavior)
   {
     type: 'annotation',
     name: '注释文字',
@@ -284,35 +308,6 @@ export const REGISTRY: ComponentDef[] = [
     params: [{ key: 'text', label: '文字', type: 'text', default: '注释' }],
     defaults: { text: '注释' },
     passive: true,
-  },
-
-  // 13. 电动机 (motor) — 线圈电阻 + 反电动势模型
-  {
-    type: 'motor',
-    name: '电动机',
-    category: 'load',
-    pins: TWO_PIN,
-    params: [
-      { key: 'coilResistance', label: '线圈电阻', type: 'number', unit: 'Ω', min: 0, max: 100, step: 0.1, default: 2 },
-      { key: 'backEMF', label: '反电动势', type: 'number', unit: 'V', min: 0, max: 50, step: 0.1, default: 1 },
-    ],
-    defaults: { coilResistance: 2, backEMF: 1 },
-    mainPins: ['a', 'b'],
-    stamp(b, comp) {
-      const a = b.node('a');
-      const bb = b.node('b');
-      const R = Math.max(b.param('coilResistance'), 1e-9);
-      const E = b.param('backEMF');
-      const m = b.addNode();
-      const k = b.addBranch();
-      b.conductance(a, m, 1 / R);
-      b.voltageSource(m, bb, E, k);
-      b.measure(() => {
-        const I = b.I(k);
-        const U = b.V('a') - b.V('b');
-        b.reading = { voltage: U, current: I, power: U * I, pinVoltages: { a: b.V('a'), b: b.V('b') } };
-      });
-    },
   },
 
   // 14. 发光二极管 (LED) — 简化线性模型：固定正向压降
@@ -336,30 +331,6 @@ export const REGISTRY: ComponentDef[] = [
         const I = b.I(k);
         const lit = I > 0; // 正向导通才发光
         b.reading = { voltage: b.V('a') - b.V('b'), current: I, power: lit ? I * Vf : 0, measured: lit ? 1 : 0, pinVoltages: { a: b.V('a'), b: b.V('b') } };
-      });
-    },
-  },
-
-  // 15. 电铃 (bell) — 电磁铁线圈，直流等效为电阻
-  {
-    type: 'bell',
-    name: '电铃',
-    category: 'load',
-    pins: TWO_PIN,
-    params: [
-      { key: 'resistance', label: '线圈电阻', type: 'number', unit: 'Ω', min: 0, max: 1000, step: 1, default: 10 },
-    ],
-    defaults: { resistance: 10 },
-    mainPins: ['a', 'b'],
-    stamp(b, comp) {
-      const a = b.node('a');
-      const bb = b.node('b');
-      const R = Math.max(b.param('resistance'), 1e-9);
-      b.conductance(a, bb, 1 / R);
-      b.measure(() => {
-        const v = b.V('a') - b.V('b');
-        const i = v / R;
-        b.reading = { voltage: v, current: i, power: v * i, pinVoltages: { a: b.V('a'), b: b.V('b') } };
       });
     },
   },

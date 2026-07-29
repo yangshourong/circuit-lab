@@ -1,6 +1,6 @@
 {
   "name": "circuit-lab",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "智能电路实验室 — 面向中学物理实验教学的纯 TypeScript 电路仿真引擎 + Web 编辑器",
   "scripts": {

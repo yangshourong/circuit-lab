@@ -11,64 +11,127 @@ interface Props {
   schemWirePaths?: Array<{ id: string; d: string }>;
 }
 
-/** 判断电流在元件引脚上是流入还是流出 */
-function flowAtPin(
-  compId: string, compType: string, pin: string,
-  pinVoltages: Map<string, Record<string, number>>, solver: SolverResult,
-): 'enter' | 'exit' | null {
-  const pv = pinVoltages.get(compId);
-  if (!pv) return null;
-  const va = pv['a'], vb = pv['b'];
-  if (va == null || vb == null) return null;
-  const diff = va - vb;
-  const isSource = getComponentDef(compType)?.category === 'source';
-  if (Math.abs(diff) < 1e-8) {
-    const cur = solver.readings[compId]?.current;
-    if (cur == null || Math.abs(cur) < 1e-8) return null;
-    if (pin === 'a') return isSource ? (cur > 0 ? 'exit' : 'enter') : (cur > 0 ? 'enter' : 'exit');
-    if (pin === 'b') return isSource ? (cur > 0 ? 'enter' : 'exit') : (cur > 0 ? 'exit' : 'enter');
-    return null;
+/**
+ * 获取某个元件引脚的节点电压。
+ * 直接从 solver.readings 中取 pinVoltages，无则返回 null。
+ */
+function pinVoltage(
+  compId: string, pin: string,
+  solver: SolverResult,
+): number | null {
+  const reading = solver.readings[compId];
+  if (!reading?.pinVoltages) return null;
+  const v = reading.pinVoltages[pin];
+  return v != null ? v : null;
+}
+
+/**
+ * 判断导线上电流的实际方向。
+ *
+ * 物理原理：导线连接两个等电位节点（被 solver 合并），但导线两端的
+ * 元件引脚属于各自的元件，其 pinVoltages 反映的是元件引脚上的节点电压。
+ * 电流从高电位流向低电位。
+ *
+ * @returns true = 电流从 from 流向 to；false = 电流从 to 流向 from
+ */
+function wireCurrentDirection(
+  w: Wire,
+  solver: SolverResult,
+  componentMap: Map<string, PlacedComponent>,
+): boolean | null {
+  const vFrom = pinVoltage(w.from.componentId, w.from.pin, solver);
+  const vTo = pinVoltage(w.to.componentId, w.to.pin, solver);
+
+  if (vFrom == null || vTo == null) return null;
+
+  const diff = vFrom - vTo;
+
+  // 两端等电位（正常——导线两端实际上连的是同一个节点）
+  // 此时需要通过元件侧的信息推断电流流向
+  if (Math.abs(diff) < 1e-6) {
+    return inferFromComponentCurrent(w, solver, componentMap);
   }
-  if (pin === 'a') return isSource ? (diff > 0 ? 'exit' : 'enter') : (diff > 0 ? 'enter' : 'exit');
-  if (pin === 'b') return isSource ? (diff > 0 ? 'enter' : 'exit') : (diff > 0 ? 'exit' : 'enter');
+
+  // 电流从高电位流向低电位
+  return diff > 0; // true = from→to
+}
+
+/**
+ * 当导线两端等电位时，通过导线连接的元件电流推断流向。
+ * 查看两端元件的电流：如果 from 侧元件在该引脚是"流出"电流，
+ * 则电流从 from 流向 to。
+ */
+function inferFromComponentCurrent(
+  w: Wire,
+  solver: SolverResult,
+  componentMap: Map<string, PlacedComponent>,
+): boolean | null {
+  const fromReading = solver.readings[w.from.componentId];
+  const toReading = solver.readings[w.to.componentId];
+  if (!fromReading || !toReading) return null;
+
+  const fromCurrent = fromReading.current;
+  const toCurrent = toReading.current;
+
+  if (fromCurrent == null && toCurrent == null) return null;
+
+  // 判断 from 侧元件在 from.pin 上是流出还是流入电流
+  const fromFlow = currentFlowAtPin(w.from.componentId, w.from.pin, solver, componentMap);
+  const toFlow = currentFlowAtPin(w.to.componentId, w.to.pin, solver, componentMap);
+
+  // from 侧引脚流出 → 电流 from→to (true)
+  // to 侧引脚流入 → 电流 from→to (true)
+  if (fromFlow === 'exit') return true;
+  if (fromFlow === 'enter') return false;
+  if (toFlow === 'enter') return true;
+  if (toFlow === 'exit') return false;
+
   return null;
 }
 
-/** 通过导线拓扑追溯，找最近的 active 元件推断电流方向 */
-function inferDirectionFromNeighbors(
-  wire: Wire, graph: CircuitGraph, solver: SolverResult,
+/**
+ * 判断电流在元件的某个引脚上是流入还是流出。
+ *
+ * 统一约定（基于 MNA 求解器的电流方向）：
+ *   - battery (source): current > 0 表示电源向外供电 → a 端流出、b 端流入
+ *   - 所有其他元件 (load/meter/control): current > 0 表示电流从 a 端流入、b 端流出
+ *
+ * 因此：
+ *   current > 0 时：
+ *     battery: pin 'a' → exit, pin 'b' → enter
+ *     others:  pin 'a' → enter, pin 'b' → exit
+ *   current < 0 时：
+ *     battery: pin 'a' → enter, pin 'b' → exit
+ *     others:  pin 'a' → exit, pin 'b' → enter
+ */
+function currentFlowAtPin(
+  compId: string,
+  pin: string,
+  solver: SolverResult,
   componentMap: Map<string, PlacedComponent>,
-  pinVoltages: Map<string, Record<string, number>>,
-): boolean {
-  const findActive = (startId: string, startPin: string): 'enter' | 'exit' | null => {
-    const visited = new Set<string>();
-    const queue: Array<{ compId: string; pin: string }> = [{ compId: startId, pin: startPin }];
-    while (queue.length > 0) {
-      const { compId, pin } = queue.shift()!;
-      const key = `${compId}:${pin}`;
-      if (visited.has(key)) continue;
-      visited.add(key);
-      const cur = solver.readings[compId]?.current;
-      if (cur != null && Math.abs(cur) > 0.0001) {
-        const ff = flowAtPin(compId, componentMap.get(compId)?.type ?? '', pin, pinVoltages, solver);
-        if (ff) return ff;
-      }
-      for (const w of graph.wires) {
-        if (w.from.componentId === compId && w.from.pin === pin) queue.push({ compId: w.to.componentId, pin: w.to.pin });
-        if (w.to.componentId === compId && w.to.pin === pin) queue.push({ compId: w.from.componentId, pin: w.from.pin });
-      }
-    }
-    return null;
-  };
+): 'enter' | 'exit' | null {
+  const reading = solver.readings[compId];
+  if (!reading) return null;
+  const current = reading.current;
+  if (current == null || Math.abs(current) < 1e-8) return null;
 
-  const src = findActive(wire.from.componentId, wire.from.pin);
-  const dst = findActive(wire.to.componentId, wire.to.pin);
+  const comp = componentMap.get(compId);
+  if (!comp) return null;
 
-  if (src === 'exit') return true;
-  if (dst === 'enter') return true;
-  if (src === 'enter') return false;
-  if (dst === 'exit') return false;
-  return true;
+  // 查元件分类，只 battery 是 source
+  const def = getComponentDef(comp.type);
+  const isBattery = def?.type === 'battery';
+
+  // current > 0 的方向约定
+  const positiveA = isBattery ? 'exit' : 'enter';  // a 端在 current>0 时的流向
+  const positiveB = isBattery ? 'enter' : 'exit';  // b 端在 current>0 时的流向
+
+  const flow = current > 0
+    ? (pin === 'a' ? positiveA : pin === 'b' ? positiveB : null)
+    : (pin === 'a' ? (positiveA === 'enter' ? 'exit' : 'enter')
+                   : pin === 'b' ? (positiveB === 'enter' ? 'exit' : 'enter') : null);
+
+  return flow;
 }
 
 /** 根据电流大小计算动画速度（秒），电流越大越快 */
@@ -101,12 +164,6 @@ export function CurrentFlow({ graph, solver, mode, componentMap, schemWirePaths 
   }
   if (maxI < 0.001) return null;
 
-  // 构建 pinVoltages 查表
-  const pinVoltages = new Map<string, Record<string, number>>();
-  for (const [id, r] of Object.entries(solver.readings)) {
-    if (r.pinVoltages) pinVoltages.set(id, r.pinVoltages);
-  }
-
   if (mode === 'schematic' && schemWirePaths) {
     return (
       <g pointerEvents="none">
@@ -126,36 +183,12 @@ export function CurrentFlow({ graph, solver, mode, componentMap, schemWirePaths 
 
     const aRaw = pinWorld(fc, w.from.pin);
     const bRaw = pinWorld(tc, w.to.pin);
-    // 仪表端点调整到底部接线柱位置
     const a = meterPhysicalEndpoint(fc, w.from.pin) ?? aRaw;
     const b = meterPhysicalEndpoint(tc, w.to.pin) ?? bRaw;
 
-    // 估算电流
-    const iFrom = solver.readings[w.from.componentId]?.current;
-    const iTo = solver.readings[w.to.componentId]?.current;
-    const iFromAbs = iFrom === undefined ? null : Math.abs(iFrom);
-    const iToAbs = iTo === undefined ? null : Math.abs(iTo);
-    const bothNull = iFromAbs === null && iToAbs === null;
-    const samePolarity = w.from.pin === w.to.pin;
-
-    // 方向判断
-    const fFlow = flowAtPin(w.from.componentId, fc.type, w.from.pin, pinVoltages, solver);
-    const tFlow = flowAtPin(w.to.componentId, tc.type, w.to.pin, pinVoltages, solver);
-
-    let forward: boolean;
-    if (samePolarity && iFrom != null && iTo != null && Math.abs(Math.abs(iFrom) - Math.abs(iTo)) > 0.0001) {
-      forward = Math.abs(iFrom) >= Math.abs(iTo);
-    } else if (fFlow === 'exit') forward = true;
-    else if (fFlow === 'enter') forward = false;
-    else if (tFlow === 'enter') forward = true;
-    else if (tFlow === 'exit') forward = false;
-    else if (bothNull) {
-      forward = inferDirectionFromNeighbors(w, graph, solver, componentMap, pinVoltages);
-    } else forward = true;
-
-    // 路径 — controlPoints stores only interior mid-points
-    let d: string;
+    // 路径
     const hasCP = w.controlPoints && w.controlPoints.length > 0;
+    let d: string;
     if (hasCP) {
       d = physicalWirePath(a, b, w.controlPoints as Array<[number, number]>);
     } else if (w.path && w.path.length >= 3) {
@@ -164,12 +197,25 @@ export function CurrentFlow({ graph, solver, mode, componentMap, schemWirePaths 
       d = physicalWirePath(a, b);
     }
 
-    // 电流阈值
+    // 方向判断：电流从高电位流向低电位
+    const forward = wireCurrentDirection(w, solver, componentMap);
+
+    // 电流大小估算
+    const iFrom = solver.readings[w.from.componentId]?.current;
+    const iTo = solver.readings[w.to.componentId]?.current;
+    const iFromAbs = iFrom != null ? Math.abs(iFrom) : null;
+    const iToAbs = iTo != null ? Math.abs(iTo) : null;
+    const bothNull = iFromAbs === null && iToAbs === null;
     if (iFromAbs !== null && iFromAbs < 0.0001) continue;
     if (iToAbs !== null && iToAbs < 0.0001) continue;
     const wireI = bothNull ? maxI : Math.max(iFromAbs ?? 0, iToAbs ?? 0);
     if (wireI < 0.001) continue;
 
+    // forward === null 表示方向无法确定，跳过该导线的动画
+    if (forward === null) continue;
+
+    // forward=true → 动画从 from→to（SVG path 方向）
+    // forward=false → 动画反向（to→from）
     paths.push({ d, speed: flowSpeed(wireI, maxI), forward });
   }
 

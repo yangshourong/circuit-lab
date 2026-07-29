@@ -49,6 +49,18 @@ function isRheostatType(type: string): boolean {
   return type === 'rheostat';
 }
 
+function isResistorType(type: string): boolean {
+  return type === 'resistor' || type === 'fuse' || type === 'led';
+}
+
+function isResistanceBoxType(type: string): boolean {
+  return type === 'resistanceBox';
+}
+
+function isBatteryType(type: string): boolean {
+  return type === 'battery';
+}
+
 /**
  * 灯泡/开关在物理模式下的底座接线柱本地坐标。
  *   pin 'a' (+) → 左侧红色接线柱 (-33, 16)
@@ -78,12 +90,47 @@ function multiSwitchTerminalLocal(_comp: PlacedComponent, pinId: string): { x: n
 }
 
 /**
+ * 定值电阻/保险丝/LED 在物理模式下的底座接线柱本地坐标。
+ *   A (pin 'a') → (-33, 9)   左侧红色接线柱
+ *   B (pin 'b') → (33, 9)    右侧红色接线柱
+ */
+function resistorTerminalLocal(_comp: PlacedComponent, pinId: string): { x: number; y: number } {
+  return pinId === 'a' ? { x: -33, y: 9 } : { x: 33, y: 9 };
+}
+
+/**
+ * 电阻箱在物理模式下的箱体面板接线柱本地坐标。
+ *   A (pin 'a') → (-40, 22)   左侧红色接线柱
+ *   B (pin 'b') → (40, 22)    右侧红色接线柱
+ */
+function resistanceBoxTerminalLocal(_comp: PlacedComponent, pinId: string): { x: number; y: number } {
+  return pinId === 'a' ? { x: -40, y: 22 } : { x: 40, y: 22 };
+}
+
+/**
+ * 电源在物理模式下的顶盖接线柱本地坐标。
+ *   pin 'a' (+) → (35, -31)   右侧红色接线柱
+ *   pin 'b' (−) → (-35, -31)  左侧银色接线柱
+ */
+function batteryTerminalLocal(_comp: PlacedComponent, pinId: string): { x: number; y: number } {
+  return pinId === 'a' ? { x: 35, y: -31 } : { x: -35, y: -31 };
+}
+
+/**
  * 滑动变阻器在物理模式下的底座接线柱本地坐标。
- *   A (pin 'a') → (-48, 17)  左端红色接线柱
- *   B (pin 'b') → (48, 17)   右端红色接线柱
+ *   A (pin 'a') → (-48, 17)   左下红色接线柱（电阻丝左端）
+ *   B (pin 'b') → (48, 17)    右下红色接线柱（电阻丝右端）
+ *   C (pin 'c') → (-48, -17)  左上红色接线柱（铜杆左端）
+ *   D (pin 'd') → (48, -17)   右上红色接线柱（铜杆右端）
  */
 function rheostatTerminalLocal(_comp: PlacedComponent, pinId: string): { x: number; y: number } {
-  return pinId === 'a' ? { x: -48, y: 17 } : { x: 48, y: 17 };
+  const map: Record<string, { x: number; y: number }> = {
+    a: { x: -48, y: 17 },
+    b: { x: 48, y: 17 },
+    c: { x: -48, y: -17 },
+    d: { x: 48, y: -17 },
+  };
+  return map[pinId] ?? { x: 0, y: 0 };
 }
 
 /**
@@ -125,6 +172,12 @@ export function meterPhysicalEndpoint(
     local = multiSwitchTerminalLocal(comp, pinId);
   } else if (isRheostatType(comp.type)) {
     local = rheostatTerminalLocal(comp, pinId);
+  } else if (isResistanceBoxType(comp.type)) {
+    local = resistanceBoxTerminalLocal(comp, pinId);
+  } else if (isBatteryType(comp.type)) {
+    local = batteryTerminalLocal(comp, pinId);
+  } else if (isResistorType(comp.type)) {
+    local = resistorTerminalLocal(comp, pinId);
   }
   if (!local) return null;
   const rad = ((comp.rotation ?? 0) * Math.PI) / 180;
@@ -147,13 +200,16 @@ function terminalOutwardDir(
   pinId: string,
 ): { x: number; y: number } {
   let local = meterPhysicalEndpoint
-    ? (isMeterType(comp.type) || isLampType(comp.type) || isSwitchType(comp.type) || isMultiSwitchType(comp.type) || isRheostatType(comp.type))
+    ? (isMeterType(comp.type) || isLampType(comp.type) || isSwitchType(comp.type) || isMultiSwitchType(comp.type) || isRheostatType(comp.type) || isResistanceBoxType(comp.type) || isBatteryType(comp.type) || isResistorType(comp.type))
       ? (() => {
           // Recompute the local coords to get direction
           if (isMeterType(comp.type)) return meterTerminalLocal(comp, pinId);
           if (isLampType(comp.type) || isSwitchType(comp.type)) return lampTerminalLocal(comp, pinId);
           if (isMultiSwitchType(comp.type)) return multiSwitchTerminalLocal(comp, pinId);
           if (isRheostatType(comp.type)) return rheostatTerminalLocal(comp, pinId);
+          if (isResistanceBoxType(comp.type)) return resistanceBoxTerminalLocal(comp, pinId);
+          if (isBatteryType(comp.type)) return batteryTerminalLocal(comp, pinId);
+          if (isResistorType(comp.type)) return resistorTerminalLocal(comp, pinId);
           return null;
         })()
       : null

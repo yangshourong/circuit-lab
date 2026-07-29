@@ -146,38 +146,42 @@ export const METER_ARC_CENTER = { cx: CX, cy: CY };
 export const COMPONENT_ART: Record<string, ComponentArt> = {
 
   // ═════════════════════════════════════════════════════════════
-  // 1. 电源 — 电池组（3D 圆柱电池 + 塑料支架）
+  // 1. 电源 — 学生电源（箱体+顶盖+接线柱+LED数显）
+  //   接线柱在顶盖两端：左−银色，右+红色
+  //   LED数显由 ComponentView 动态渲染
+  //   viewBox: 0 0 120 90（比标准 120×70 更高）
   // ═════════════════════════════════════════════════════════════
   battery: {
     physical: `
-<line x1="8" y1="35" x2="22" y2="35" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
-<line x1="98" y1="35" x2="112" y2="35" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
-<!-- 电池盒底座 -->
-<rect x="20" y="34" width="80" height="18" rx="3" fill="url(#plastic)" stroke="#94a3b8" stroke-width="1" filter="url(#shadowSm)"/>
-<!-- 四节圆柱电池 -->
-<g filter="url(#shadowSm)">
-  <rect x="26" y="14" width="14" height="20" rx="3" fill="url(#cylinder)"/>
-  <rect x="42" y="14" width="14" height="20" rx="3" fill="url(#cylinder)"/>
-  <rect x="58" y="14" width="14" height="20" rx="3" fill="url(#cylinder)"/>
-  <rect x="74" y="14" width="14" height="20" rx="3" fill="url(#cylinder)"/>
-</g>
-<!-- 正极凸起 -->
-<g fill="#dc2626" stroke="#991b1b" stroke-width="0.6">
-  <ellipse cx="33" cy="14" rx="4" ry="2"/>
-  <ellipse cx="49" cy="14" rx="4" ry="2"/>
-  <ellipse cx="65" cy="14" rx="4" ry="2"/>
-  <ellipse cx="81" cy="14" rx="4" ry="2"/>
-</g>
-<!-- 负极弹簧示意 -->
-<g stroke="#94a3b8" stroke-width="0.8" fill="none">
-  <path d="M30 34 Q33 30 36 34"/>
-  <path d="M46 34 Q49 30 52 34"/>
-  <path d="M62 34 Q65 30 68 34"/>
-  <path d="M78 34 Q81 30 84 34"/>
-</g>
-<!-- 正负极标识 -->
-<text x="8" y="30" font-family="sans-serif" font-size="8" fill="#dc2626" font-weight="bold">+</text>
-<text x="106" y="30" font-family="sans-serif" font-size="8" fill="#0f172a" font-weight="bold">−</text>
+<!-- 顶盖（浅天蓝色，比箱体略宽） -->
+<rect x="8" y="8" width="104" height="14" rx="3" fill="#93c5fd" stroke="#60a5fa" stroke-width="0.8"/>
+<rect x="10" y="9" width="100" height="3" rx="1.5" fill="white" opacity="0.35"/>
+<!-- 左接线柱底座（负极，黑色嵌座） -->
+<circle cx="25" cy="14" r="5" fill="#1e293b" stroke="#0f172a" stroke-width="0.5"/>
+<!-- 左接线柱旋钮（银色金属） -->
+<circle cx="25" cy="14" r="3.5" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.5"/>
+<circle cx="25" cy="14" r="1.5" fill="#e2e8f0" stroke="#94a3b8" stroke-width="0.3"/>
+<!-- 右接线柱底座（正极，黑色嵌座） -->
+<circle cx="95" cy="14" r="5" fill="#1e293b" stroke="#0f172a" stroke-width="0.5"/>
+<!-- 右接线柱旋钮（红色金属） -->
+<circle cx="95" cy="14" r="3.5" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<circle cx="95" cy="14" r="1.5" fill="#fca5a5" stroke="#dc2626" stroke-width="0.3"/>
+<!-- 箱体主体（灰蓝色，加高） -->
+<rect x="10" y="20" width="100" height="62" rx="3" fill="#64748b" stroke="#475569" stroke-width="1" filter="url(#shadow)"/>
+<!-- LED数显窗口区域（深色凹槽，ComponentView动态填充数字） -->
+<rect x="30" y="24" width="60" height="16" rx="2" fill="#0f172a" stroke="#334155" stroke-width="0.5"/>
+<!-- 箱体正面标签区 -->
+<rect x="14" y="46" width="92" height="14" rx="2" fill="#f8fafc" opacity="0.92"/>
+<!-- 标签文字 -->
+<text x="60" y="56" font-family="sans-serif" font-size="5.5" fill="#1e293b" text-anchor="middle" font-weight="bold">学生电源</text>
+<!-- 负极标识 -->
+<text x="28" y="56" font-family="sans-serif" font-size="5" fill="#3b82f6" text-anchor="middle" font-weight="bold">−</text>
+<!-- 正极标识 -->
+<text x="92" y="56" font-family="sans-serif" font-size="5" fill="#dc2626" text-anchor="middle" font-weight="bold">+</text>
+<!-- 箱体底部散热槽 -->
+<line x1="20" y1="68" x2="100" y2="68" stroke="#475569" stroke-width="0.4"/>
+<line x1="20" y1="70" x2="100" y2="70" stroke="#475569" stroke-width="0.4"/>
+<line x1="20" y1="72" x2="100" y2="72" stroke="#475569" stroke-width="0.4"/>
 `.trim(),
     schematic: `
 <line x1="8" y1="35" x2="35" y2="35" stroke="#334155" stroke-width="2.5" stroke-linecap="round"/>
@@ -334,18 +338,32 @@ export const COMPONENT_ART: Record<string, ComponentArt> = {
   },
 
   // ═════════════════════════════════════════════════════════════
-  // 4. 定值电阻
+  // 4. 定值电阻（侧视拟真图，底座+接线柱，色环由ComponentView动态渲染）
   // ═════════════════════════════════════════════════════════════
   resistor: {
     physical: `
-<line x1="8" y1="35" x2="22" y2="35" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
-<line x1="98" y1="35" x2="112" y2="35" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
-<rect x="20" y="22" width="80" height="26" rx="4" fill="url(#ceramic)" stroke="#94a3b8" stroke-width="1" filter="url(#shadowSm)"/>
-<!-- 色环 -->
-<rect x="28" y="22" width="6" height="26" fill="#dc2626"/>
-<rect x="38" y="22" width="6" height="26" fill="#92400e"/>
-<rect x="48" y="22" width="6" height="26" fill="#f59e0b"/>
-<rect x="80" y="22" width="6" height="26" fill="#ca8a04"/>
+<!-- 底座 -->
+<rect x="18" y="48" width="84" height="12" rx="3" fill="url(#plastic)" stroke="#64748b" stroke-width="1" filter="url(#shadowSm)"/>
+<rect x="19" y="49" width="82" height="3" rx="1.5" fill="white" opacity="0.08"/>
+<!-- 左接线柱 A -->
+<rect x="22" y="42" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<rect x="23" y="42" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
+<!-- 右接线柱 B -->
+<rect x="88" y="42" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<rect x="89" y="42" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
+<!-- 引线（接线柱→电阻体） -->
+<line x1="27" y1="42" x2="38" y2="36" stroke="#b45309" stroke-width="1" stroke-linecap="round"/>
+<line x1="93" y1="42" x2="82" y2="36" stroke="#b45309" stroke-width="1" stroke-linecap="round"/>
+<!-- 左端金属帽 -->
+<rect x="36" y="28" width="5" height="14" rx="2" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.5"/>
+<!-- 电阻体（圆柱形侧视，缩小比例） -->
+<rect x="39" y="28" width="42" height="14" rx="1" fill="url(#ceramic)" stroke="#94a3b8" stroke-width="0.6" filter="url(#shadowSm)"/>
+<rect x="40" y="29" width="40" height="2.5" rx="0.5" fill="white" opacity="0.1"/>
+<!-- 右端金属帽 -->
+<rect x="79" y="28" width="5" height="14" rx="2" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.5"/>
+<!-- 接线柱标识 -->
+<text x="27" y="56" font-family="sans-serif" font-size="3.5" fill="#475569" text-anchor="middle" font-weight="bold">A</text>
+<text x="93" y="56" font-family="sans-serif" font-size="3.5" fill="#475569" text-anchor="middle" font-weight="bold">B</text>
 `.trim(),
     schematic: `
 <line x1="8" y1="35" x2="25" y2="35" stroke="#334155" stroke-width="2.5" stroke-linecap="round"/>
@@ -355,22 +373,31 @@ export const COMPONENT_ART: Record<string, ComponentArt> = {
   },
 
   // ═════════════════════════════════════════════════════════════
-  // 5. 滑动变阻器（侧视拟真图）
-  // 水平布局：底座→瓷管绕线→铜杆→滑片→两端接线柱
+  // 5. 滑动变阻器（侧视拟真图，4端子 ABCD）
+  // 水平布局：底座→瓷管绕线→铜杆→滑片→左右金属立柱→四端接线柱
+  //   A, B = 电阻丝两端（瓷管两端底部红色接线柱）
+  //   C, D = 金属杆两端（铜杆两端顶部红色接线柱）
+  //   左右立柱从底座支脚向上延伸支撑铜杆
   rheostat: {
     physical: `
 <!-- 底座（浅蓝色绝缘底板） -->
 <rect x="5" y="54" width="110" height="12" rx="3" fill="#bfdbfe" stroke="#64748b" stroke-width="0.8" filter="url(#shadowSm)"/>
 <rect x="7" y="55" width="106" height="3" rx="1.5" fill="white" opacity="0.15"/>
 <!-- 左底座支脚 -->
-<path d="M12 42 L12 54 L22 54 L22 42" fill="#93c5fd" stroke="#64748b" stroke-width="0.6"/>
-<rect x="14" y="44" width="6" height="3" rx="1" fill="#60a5fa" opacity="0.3"/>
+<path d="M8 42 L8 54 L18 54 L18 42" fill="#93c5fd" stroke="#64748b" stroke-width="0.6"/>
+<rect x="10" y="44" width="6" height="3" rx="1" fill="#60a5fa" opacity="0.3"/>
 <!-- 右底座支脚 -->
-<path d="M98 42 L98 54 L108 54 L108 42" fill="#93c5fd" stroke="#64748b" stroke-width="0.6"/>
-<rect x="100" y="44" width="6" height="3" rx="1" fill="#60a5fa" opacity="0.3"/>
+<path d="M102 42 L102 54 L112 54 L112 42" fill="#93c5fd" stroke="#64748b" stroke-width="0.6"/>
+<rect x="104" y="44" width="6" height="3" rx="1" fill="#60a5fa" opacity="0.3"/>
+<!-- 左绝缘立柱（从底座支脚向上支撑铜杆） -->
+<rect x="10" y="22" width="5" height="32" rx="1.5" fill="#93c5fd" stroke="#64748b" stroke-width="0.6"/>
+<rect x="11" y="23" width="3" height="30" rx="0.5" fill="#bfdbfe" opacity="0.3"/>
+<!-- 右绝缘立柱（从底座支脚向上支撑铜杆） -->
+<rect x="105" y="22" width="5" height="32" rx="1.5" fill="#93c5fd" stroke="#64748b" stroke-width="0.6"/>
+<rect x="106" y="23" width="3" height="30" rx="0.5" fill="#bfdbfe" opacity="0.3"/>
 <!-- 瓷管（陶瓷圆管侧视） -->
-<rect x="10" y="38" width="100" height="10" rx="5" fill="url(#ceramic)" stroke="#94a3b8" stroke-width="0.8"/>
-<rect x="12" y="39" width="96" height="3" rx="1.5" fill="white" opacity="0.12"/>
+<rect x="18" y="38" width="84" height="10" rx="5" fill="url(#ceramic)" stroke="#94a3b8" stroke-width="0.8"/>
+<rect x="20" y="39" width="80" height="3" rx="1.5" fill="white" opacity="0.12"/>
 <!-- 电阻丝绕线（竖线密集排列，两端留出空管段） -->
 <line x1="25" y1="39" x2="25" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
 <line x1="29" y1="39" x2="29" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
@@ -390,19 +417,30 @@ export const COMPONENT_ART: Record<string, ComponentArt> = {
 <line x1="85" y1="39" x2="85" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
 <line x1="89" y1="39" x2="89" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
 <line x1="93" y1="39" x2="93" y2="47" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
-<!-- 铜杆（顶部金属横杆） -->
-<rect x="8" y="24" width="104" height="4" rx="2" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.5"/>
-<rect x="10" y="24.5" width="100" height="1.2" rx="0.6" fill="white" opacity="0.15"/>
-<!-- 左接线柱 (pin a A端) -->
+<!-- 电阻丝引出线（绕线两端分别接至A、B接线柱） -->
+<line x1="25" y1="43" x2="12" y2="48" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="93" y1="43" x2="108" y2="48" stroke="#b45309" stroke-width="1.2" stroke-linecap="round"/>
+<!-- 铜杆（顶部金属横杆，由左右立柱支撑） -->
+<rect x="12" y="24" width="96" height="4" rx="2" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.5"/>
+<rect x="14" y="24.5" width="92" height="1.2" rx="0.6" fill="white" opacity="0.15"/>
+<!-- 左下接线柱 A (电阻丝左端) -->
 <rect x="7" y="48" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
 <rect x="8" y="48" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
 <text x="12" y="62" font-family="sans-serif" font-size="3.5" fill="#475569" text-anchor="middle" font-weight="bold">A</text>
-<!-- 右接线柱 (pin b B端) -->
+<!-- 右下接线柱 B (电阻丝右端) -->
 <rect x="103" y="48" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
 <rect x="104" y="48" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
 <text x="108" y="62" font-family="sans-serif" font-size="3.5" fill="#475569" text-anchor="middle" font-weight="bold">B</text>
+<!-- 左上接线柱 C (铜杆左端) -->
+<rect x="7" y="14" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<rect x="8" y="14" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
+<text x="12" y="11" font-family="sans-serif" font-size="3.5" fill="#475569" text-anchor="middle" font-weight="bold">C</text>
+<!-- 右上接线柱 D (铜杆右端) -->
+<rect x="103" y="14" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<rect x="104" y="14" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
+<text x="108" y="11" font-family="sans-serif" font-size="3.5" fill="#475569" text-anchor="middle" font-weight="bold">D</text>
 <!-- P标签（滑片标记） -->
-<text x="60" y="14" font-family="sans-serif" font-size="4" fill="#475569" text-anchor="middle" font-weight="bold">P</text>
+<text x="60" y="9" font-family="sans-serif" font-size="4" fill="#475569" text-anchor="middle" font-weight="bold">P</text>
 `.trim(),
     schematic: `
 <line x1="8" y1="35" x2="25" y2="35" stroke="#334155" stroke-width="2.5" stroke-linecap="round"/>
@@ -415,22 +453,27 @@ export const COMPONENT_ART: Record<string, ComponentArt> = {
   },
 
   // ═════════════════════════════════════════════════════════════
-  // 6. 电阻箱
+  // 6. 电阻箱（ZX21型，箱体+面板步进拨盘，无底座）
+  //   步进拨盘和阻值读数由 ComponentView 动态渲染
+  //   viewBox: 0 0 130 80（比标准 120×70 更宽更高）
   // ═════════════════════════════════════════════════════════════
   resistanceBox: {
     physical: `
-<rect x="14" y="12" width="92" height="46" rx="4" fill="url(#plastic)" stroke="#64748b" stroke-width="1" filter="url(#shadow)"/>
-<circle cx="27" cy="35" r="4" fill="url(#metal)" stroke="#64748b" stroke-width="0.8"/>
-<circle cx="93" cy="35" r="4" fill="url(#metal)" stroke="#64748b" stroke-width="0.8"/>
-<!-- 旋钮 -->
-<circle cx="38" cy="35" r="8" fill="url(#metalH)" stroke="#64748b" stroke-width="0.8"/>
-<text x="38" y="39" font-family="sans-serif" font-size="6" fill="#334155" text-anchor="middle" font-weight="bold">×1</text>
-<circle cx="60" cy="35" r="8" fill="url(#metalH)" stroke="#64748b" stroke-width="0.8"/>
-<text x="60" y="39" font-family="sans-serif" font-size="6" fill="#334155" text-anchor="middle" font-weight="bold">×10</text>
-<circle cx="82" cy="35" r="8" fill="url(#metalH)" stroke="#64748b" stroke-width="0.8"/>
-<text x="82" y="39" font-family="sans-serif" font-size="6" fill="#334155" text-anchor="middle" font-weight="bold">×100</text>
-<circle cx="38" cy="55" r="8" fill="url(#metalH)" stroke="#64748b" stroke-width="0.8"/>
-<text x="38" y="59" font-family="sans-serif" font-size="5" fill="#334155" text-anchor="middle" font-weight="bold">×1k</text>
+<!-- 箱体面板（浅灰色，无底座，自立箱体） -->
+<rect x="4" y="2" width="122" height="72" rx="4" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1" filter="url(#shadow)"/>
+<rect x="5" y="3" width="120" height="3" rx="1.5" fill="white" opacity="0.4"/>
+<!-- 面板顶部标识条 -->
+<rect x="6" y="4" width="118" height="7" rx="1.5" fill="#cbd5e1"/>
+<text x="65" y="9.5" font-family="sans-serif" font-size="4" fill="#334155" text-anchor="middle" font-weight="bold">ZX21 电阻箱</text>
+<!-- 左接线柱 A（在箱体底部面板上） -->
+<rect x="19" y="58" width="12" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<rect x="20" y="58" width="10" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
+<!-- 右接线柱 B（在箱体底部面板上） -->
+<rect x="99" y="58" width="12" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<rect x="100" y="58" width="10" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
+<!-- 接线柱标识 -->
+<text x="25" y="72" font-family="sans-serif" font-size="3.5" fill="#475569" text-anchor="middle" font-weight="bold">A</text>
+<text x="105" y="72" font-family="sans-serif" font-size="3.5" fill="#475569" text-anchor="middle" font-weight="bold">B</text>
 `.trim(),
     schematic: `
 <line x1="8" y1="35" x2="25" y2="35" stroke="#334155" stroke-width="2.5" stroke-linecap="round"/>
@@ -601,25 +644,7 @@ ${meter270Dial(CX, CY, [0, 2.5, 5, 7.5, 10, 12.5, 15], 15, [0, 0.5, 1, 1.5, 2, 2
   },
 
   // ═════════════════════════════════════════════════════════════
-  // 11. 接线柱
-  // ═════════════════════════════════════════════════════════════
-  terminal: {
-    physical: `
-<rect x="42" y="28" width="36" height="18" rx="3" fill="url(#plastic)" stroke="#94a3b8" stroke-width="1" filter="url(#shadowSm)"/>
-<rect x="48" y="16" width="24" height="12" rx="2" fill="url(#metal)" stroke="#64748b" stroke-width="0.8" filter="url(#shadowSm)"/>
-<rect x="46" y="14" width="28" height="4" rx="1" fill="url(#metalH)" stroke="#475569" stroke-width="0.6"/>
-<line x1="55" y1="22" x2="65" y2="22" stroke="#475569" stroke-width="0.8"/>
-<line x1="60" y1="17" x2="60" y2="27" stroke="#475569" stroke-width="0.8"/>
-`.trim(),
-    schematic: `
-<line x1="8" y1="35" x2="50" y2="35" stroke="#334155" stroke-width="2.5" stroke-linecap="round"/>
-<line x1="70" y1="35" x2="112" y2="35" stroke="#334155" stroke-width="2.5" stroke-linecap="round"/>
-<circle cx="60" cy="35" r="4" fill="none" stroke="#334155" stroke-width="2"/>
-`.trim(),
-  },
-
-  // ═════════════════════════════════════════════════════════════
-  // 12. 注释文字
+  // 11. 注释文字
   // ═════════════════════════════════════════════════════════════
   annotation: {
     physical: `<text x="60" y="35" font-family="sans-serif" font-size="10" fill="#334155" text-anchor="middle">注释</text>`.trim(),
@@ -627,41 +652,40 @@ ${meter270Dial(CX, CY, [0, 2.5, 5, 7.5, 10, 12.5, 15], 15, [0, 0.5, 1, 1.5, 2, 2
   },
 
   // ═════════════════════════════════════════════════════════════
-  // 13. 电动机
-  // ═════════════════════════════════════════════════════════════
-  motor: {
-    physical: `
-<line x1="8" y1="35" x2="22" y2="35" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
-<line x1="98" y1="35" x2="112" y2="35" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
-<rect x="20" y="18" width="80" height="34" rx="4" fill="url(#plastic)" stroke="#94a3b8" stroke-width="1" filter="url(#shadowSm)"/>
-<ellipse cx="60" cy="35" rx="18" ry="18" fill="url(#metal)" stroke="#64748b" stroke-width="0.8"/>
-<text x="60" y="33" font-family="sans-serif" font-size="9" fill="#334155" text-anchor="middle" font-weight="bold">N</text>
-<text x="60" y="42" font-family="sans-serif" font-size="7" fill="#94a3b8" text-anchor="middle">S</text>
-`.trim(),
-    schematic: `
-<line x1="8" y1="35" x2="35" y2="35" stroke="#334155" stroke-width="2.5" stroke-linecap="round"/>
-<line x1="85" y1="35" x2="112" y2="35" stroke="#334155" stroke-width="2.5" stroke-linecap="round"/>
-<circle cx="60" cy="35" r="20" fill="none" stroke="#334155" stroke-width="2.5"/>
-<text x="60" y="40" font-family="sans-serif" font-size="14" fill="#334155" text-anchor="middle">M</text>
-`.trim(),
-  },
-
-  // ═════════════════════════════════════════════════════════════
-  // 14. 发光二极管
+  // 14. 发光二极管（底座+接线柱+透明半球+引线）
   // ═════════════════════════════════════════════════════════════
   led: {
     physical: `
-<line x1="8" y1="35" x2="25" y2="35" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
-<line x1="95" y1="35" x2="112" y2="35" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
-<rect x="22" y="22" width="76" height="26" rx="3" fill="url(#plastic)" stroke="#94a3b8" stroke-width="1" filter="url(#shadowSm)"/>
-<!-- LED chip -->
-<circle cx="60" cy="35" r="8" fill="#ef4444" opacity="0.6"/>
-<circle cx="60" cy="35" r="5" fill="#dc2626"/>
-<!-- Arrow for light emission -->
-<line x1="75" y1="25" x2="85" y2="20" stroke="#94a3b8" stroke-width="0.8"/>
-<polygon points="85,20 80,22 83,25" fill="#94a3b8"/>
-<line x1="80" y1="25" x2="90" y2="20" stroke="#94a3b8" stroke-width="0.8"/>
-<polygon points="90,20 85,22 88,25" fill="#94a3b8"/>
+<!-- 底座 -->
+<rect x="18" y="48" width="84" height="12" rx="3" fill="url(#plastic)" stroke="#64748b" stroke-width="1" filter="url(#shadowSm)"/>
+<rect x="19" y="49" width="82" height="3" rx="1.5" fill="white" opacity="0.08"/>
+<!-- 左接线柱 A -->
+<rect x="22" y="42" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<rect x="23" y="42" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
+<!-- 右接线柱 B -->
+<rect x="88" y="42" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<rect x="89" y="42" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
+<!-- 引线（接线柱→LED体） -->
+<line x1="27" y1="42" x2="42" y2="32" stroke="#b45309" stroke-width="1" stroke-linecap="round"/>
+<line x1="93" y1="42" x2="78" y2="32" stroke="#b45309" stroke-width="1" stroke-linecap="round"/>
+<!-- LED 底座平台 -->
+<rect x="40" y="36" width="40" height="8" rx="3" fill="#e2e8f0" stroke="#94a3b8" stroke-width="0.6"/>
+<!-- LED 透明半球（红色） -->
+<ellipse cx="60" cy="24" rx="14" ry="14" fill="rgba(239,68,68,0.25)" stroke="#ef4444" stroke-width="0.8"/>
+<!-- LED 内部发光区 -->
+<ellipse cx="60" cy="22" rx="8" ry="8" fill="rgba(239,68,68,0.3)"/>
+<!-- LED 芯片核心 -->
+<rect x="57" y="26" width="6" height="4" rx="0.5" fill="#dc2626" stroke="#991b1b" stroke-width="0.4"/>
+<!-- LED 高光 -->
+<ellipse cx="54" cy="18" rx="5" ry="4" fill="white" opacity="0.35"/>
+<!-- 发光箭头标记 -->
+<line x1="76" y1="20" x2="84" y2="16" stroke="#94a3b8" stroke-width="0.8"/>
+<polygon points="84,16 80,18 82,21" fill="#94a3b8"/>
+<line x1="78" y1="24" x2="86" y2="20" stroke="#94a3b8" stroke-width="0.8"/>
+<polygon points="86,20 82,22 84,25" fill="#94a3b8"/>
+<!-- 接线柱标识 -->
+<text x="27" y="56" font-family="sans-serif" font-size="3.5" fill="#475569" text-anchor="middle" font-weight="bold">A</text>
+<text x="93" y="56" font-family="sans-serif" font-size="3.5" fill="#475569" text-anchor="middle" font-weight="bold">B</text>
 `.trim(),
     schematic: `
 <line x1="8" y1="35" x2="30" y2="35" stroke="#334155" stroke-width="2.5" stroke-linecap="round"/>
@@ -676,34 +700,33 @@ ${meter270Dial(CX, CY, [0, 2.5, 5, 7.5, 10, 12.5, 15], 15, [0, 0.5, 1, 1.5, 2, 2
   },
 
   // ═════════════════════════════════════════════════════════════
-  // 15. 电铃
-  // ═════════════════════════════════════════════════════════════
-  buzzer: {
-    physical: `
-<line x1="8" y1="35" x2="22" y2="35" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
-<line x1="98" y1="35" x2="112" y2="35" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
-<rect x="20" y="20" width="80" height="30" rx="4" fill="url(#plastic)" stroke="#94a3b8" stroke-width="1" filter="url(#shadowSm)"/>
-<circle cx="60" cy="35" r="10" fill="url(#metal)" stroke="#64748b" stroke-width="0.8"/>
-<text x="60" y="38" font-family="sans-serif" font-size="8" fill="#334155" text-anchor="middle" font-weight="bold">铃</text>
-`.trim(),
-    schematic: `
-<line x1="8" y1="35" x2="30" y2="35" stroke="#334155" stroke-width="2.5" stroke-linecap="round"/>
-<line x1="90" y1="35" x2="112" y2="35" stroke="#334155" stroke-width="2.5" stroke-linecap="round"/>
-<circle cx="60" cy="35" r="20" fill="none" stroke="#334155" stroke-width="2.5"/>
-<text x="60" y="40" font-family="sans-serif" font-size="14" fill="#334155" text-anchor="middle">铃</text>
-`.trim(),
-  },
-
-  // ═════════════════════════════════════════════════════════════
-  // 16. 保险丝
+  // 16. 保险丝（底座+接线柱+熔丝管）
   // ═════════════════════════════════════════════════════════════
   fuse: {
     physical: `
-<line x1="8" y1="35" x2="22" y2="35" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
-<line x1="98" y1="35" x2="112" y2="35" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
-<rect x="20" y="25" width="80" height="20" rx="3" fill="url(#plastic)" stroke="#94a3b8" stroke-width="1" filter="url(#shadowSm)"/>
-<rect x="35" y="28" width="50" height="14" rx="2" fill="url(#glass)" stroke="#64748b" stroke-width="0.8"/>
-<line x1="40" y1="35" x2="80" y2="35" stroke="#b45309" stroke-width="1" stroke-linecap="round"/>
+<!-- 底座 -->
+<rect x="18" y="48" width="84" height="12" rx="3" fill="url(#plastic)" stroke="#64748b" stroke-width="1" filter="url(#shadowSm)"/>
+<rect x="19" y="49" width="82" height="3" rx="1.5" fill="white" opacity="0.08"/>
+<!-- 左接线柱 A -->
+<rect x="22" y="42" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<rect x="23" y="42" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
+<!-- 右接线柱 B -->
+<rect x="88" y="42" width="10" height="8" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="0.5"/>
+<rect x="89" y="42" width="8" height="3" rx="1" fill="#fca5a5" opacity="0.3"/>
+<!-- 熔丝管夹座（左右两个金属夹） -->
+<rect x="26" y="32" width="8" height="12" rx="1.5" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.6"/>
+<rect x="86" y="32" width="8" height="12" rx="1.5" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.6"/>
+<!-- 熔丝管（透明玻璃管+熔丝） -->
+<rect x="33" y="34" width="54" height="8" rx="4" fill="rgba(255,255,255,0.35)" stroke="#94a3b8" stroke-width="0.8"/>
+<rect x="34" y="35" width="52" height="2" rx="1" fill="white" opacity="0.25"/>
+<!-- 熔丝（细金属丝） -->
+<line x1="36" y1="38" x2="84" y2="38" stroke="#b45309" stroke-width="0.8" stroke-linecap="round"/>
+<!-- 熔丝管端帽 -->
+<rect x="33" y="34" width="5" height="8" rx="2" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.4"/>
+<rect x="82" y="34" width="5" height="8" rx="2" fill="url(#metalH)" stroke="#94a3b8" stroke-width="0.4"/>
+<!-- 接线柱标识 -->
+<text x="27" y="56" font-family="sans-serif" font-size="3.5" fill="#475569" text-anchor="middle" font-weight="bold">A</text>
+<text x="93" y="56" font-family="sans-serif" font-size="3.5" fill="#475569" text-anchor="middle" font-weight="bold">B</text>
 `.trim(),
     schematic: `
 <line x1="8" y1="35" x2="30" y2="35" stroke="#334155" stroke-width="2.5" stroke-linecap="round"/>
